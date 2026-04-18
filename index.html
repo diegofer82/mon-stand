@@ -310,6 +310,8 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
       <button class="btn btn-outline" onclick="closeModal('modalArticle')">Annuler</button>
       <button class="btn btn-gold" onclick="saveArticle()">✓ Enregistrer</button>
     </div>
+    <button class="btn btn-red" onclick="deleteArticle()" style="margin-top:7px">🗑 Supprimer cet article</button>
+    </div>
   </div>
 </div>
 
@@ -721,6 +723,12 @@ function saveArticle(){
   a.quantite=parseInt(document.getElementById('editQty').value)||0;a.categorie=document.getElementById('editCat').value;
   const p=parseInt(document.getElementById('editPromo').value);a.promo2eme=(!isNaN(p)&&p>0)?p:null;
   saveDB();filterArticles();closeModal('modalArticle');showToast('✓ Mis à jour');
+}
+function deleteArticle(){
+  const id=document.getElementById('editArticleId').value,a=articles.find(x=>x.id===id);if(!a)return;
+  if(!confirm(`Supprimer "${a.nom}" définitivement ?`))return;
+  articles=articles.filter(x=>x.id!==id);
+  saveDB();filterArticles();closeModal('modalArticle');showToast('🗑 Article supprimé');
 }
 function creerArticle(){
   const nom=document.getElementById('newNom').value.trim();if(!nom){showToast('⚠ Nom requis');return;}
