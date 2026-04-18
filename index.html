@@ -900,7 +900,7 @@ function genererPDF(){
   const vendor=settings.prenom||'',dateStr=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const tenc=ventes.reduce((a,v)=>a+v.montantEncaisse,0),trem=ventes.reduce((a,v)=>a+v.remisePanier+v.remiseEncaissement,0);
   doc.setFillColor(15,8,32);doc.rect(0,0,210,42,'F');
-  doc.setTextColor(201,168,76);doc.setFontSize(20);doc.text('🌿 Debajah Création',15,16);
+  doc.setTextColor(201,168,76);doc.setFontSize(20);doc.text('Debajah Création',15,16);
   doc.setFontSize(10);doc.setTextColor(160,140,200);doc.text('Rapport de clôture journalière',15,24);doc.text(dateStr.charAt(0).toUpperCase()+dateStr.slice(1),15,31);
   if(vendor){doc.setTextColor(201,168,76);doc.text('Vendeur : '+vendor,15,38);}
   doc.setFontSize(8);doc.setTextColor(120,100,160);doc.text('v1.1 — By Diego OLAYA & Claude 4.6',195,38,{align:'right'});
