@@ -192,11 +192,11 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
     <div class="stat-card"><div class="stat-value" id="statPaye" style="color:var(--green)">0 CFP</div><div class="stat-label">Déjà payé</div></div>
     <div class="stat-card"><div class="stat-value" id="statSessions">0</div><div class="stat-label">Sessions</div></div>
   </div>
-  <div class="btn-row" style="margin-bottom:10px">
+  <div style="margin-bottom:10px">
     <button class="btn btn-outline" onclick="openAddSession()">+ Ajouter session</button>
-    <button class="btn btn-blue btn-sm" onclick="exportHeuresXLSX()" style="width:auto;padding:11px 14px">📊 Excel</button>
   </div>
-  <div class="card"><div class="card-title">📅 Sessions</div><div id="sessionsList"><div class="empty-state">Aucune session</div></div></div>
+  <div class="card"><div class="card-title">📅 Sessions du mois en cours</div><div id="sessionsList"><div class="empty-state">Aucune session</div></div></div>
+  <div class="card"><div class="card-title">🗂 Historique des sessions</div><div id="sessionsHistorique"><div class="empty-state">Aucun historique</div></div></div>
 </div>
 
 <!-- STOCK -->
@@ -238,9 +238,9 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
   <div class="card"><div class="card-title">📊 Résumé du jour</div><div id="clotureSummary"><div class="empty-state">Aucune vente</div></div></div>
   <div class="card"><div class="card-title">📦 Stock</div><div id="clotureStock"></div></div>
   <div class="btn-row" style="margin-bottom:10px">
-    <button class="btn btn-gold" onclick="genererPDF()">📄 PDF</button>
+    <button class="btn btn-gold btn-sm" onclick="genererPDF()" style="width:auto;padding:11px 16px">📄 PDF</button>
     <button class="btn btn-blue btn-sm" onclick="syncToGoogle(true)" style="width:auto;padding:11px 14px">☁️ Sync</button>
-    <button class="btn btn-red btn-sm" onclick="cloturerJournee()" style="width:auto;padding:11px 14px">🔒</button>
+    <button class="btn btn-red" onclick="cloturerJournee()" style="flex:1">Fermer caisse</button>
   </div>
   <div class="section-title">Historique</div>
   <div id="historiqueList"><div class="empty-state">Aucun historique</div></div>
@@ -620,39 +620,70 @@ function savePaiement(){
   if(!s.paiements)s.paiements=[];s.paiements.push({id:Date.now(),montant:m,date:d});
   saveDB();renderSessions();closeModal('modalPaiement');showToast('✓ Paiement enregistré');
 }
+function togglePayee(id,source){
+  // source = 'sessions' ou 'historique'
+  let s=sessions.find(x=>x.id===id);
+  if(!s){
+    // chercher dans l'historique
+    for(const h of historique){
+      s=(h.sessions||[]).find(x=>x.id===id);
+      if(s)break;
+    }
+  }
+  if(!s)return;
+  s.payee=!s.payee;
+  saveDB();renderSessions();renderSessionsHistorique();
+}
 function renderSessions(){
   const c=document.getElementById('sessionsList');
-  if(!sessions.length){c.innerHTML='<div class="empty-state">Aucune session</div>';updateHeuresStats();return;}
-  c.innerHTML=[...sessions].sort((a,b)=>new Date(b.debut)-new Date(a.debut)).map(s=>{
-    const db=new Date(s.debut),fn=s.fin?new Date(s.fin):null;
-    const h=Math.floor(s.dureeMin/60),m=s.dureeMin%60;
-    const du=Math.round(s.dureeMin/60*settings.tauxH),paye=(s.paiements||[]).reduce((a,p)=>a+p.montant,0),reste=Math.max(0,du-paye);
-    return`<div class="session-row">
-      <div style="flex:1">
-        <div class="session-date">${db.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</div>
-        <div class="session-hours">${db.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} → ${fn?fn.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'en cours'}</div>
-        ${s.commentaire?`<div class="session-comment">📍 ${s.commentaire}</div>`:''}
-        <div class="session-amount">${du.toLocaleString('fr-FR')} CFP · Payé: ${paye.toLocaleString('fr-FR')}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-        <div class="session-duration">${h}h${String(m).padStart(2,'0')}</div>
-        <span class="paid-badge ${reste===0?'yes':'no'}" onclick="openPaiementModal(${s.id})">${reste===0?'✓ Soldée':'+ Paiement'}</span>
-        <div style="display:flex;gap:4px">
-          <button class="qty-btn" onclick="openEditSession(${s.id})" style="font-size:12px">✏️</button>
-          <button class="qty-btn" onclick="deleteSession(${s.id})" style="font-size:12px;color:var(--red)">🗑</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+  if(!sessions.length){c.innerHTML='<div class="empty-state">Aucune session en cours</div>';updateHeuresStats();return;}
+  c.innerHTML=[...sessions].sort((a,b)=>new Date(b.debut)-new Date(a.debut)).map(s=>renderSessionRow(s,'sessions')).join('');
   updateHeuresStats();
 }
+function renderSessionRow(s,source){
+  const db=new Date(s.debut),fn=s.fin?new Date(s.fin):null;
+  const h=Math.floor(s.dureeMin/60),m=s.dureeMin%60;
+  const du=Math.round(s.dureeMin/60*settings.tauxH);
+  const payee=!!s.payee;
+  return`<div class="session-row">
+    <div style="flex:1">
+      <div class="session-date">${db.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</div>
+      <div class="session-hours">${db.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} → ${fn?fn.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'en cours'}</div>
+      ${s.commentaire?`<div class="session-comment">📍 ${s.commentaire}</div>`:''}
+      <div class="session-amount">${du.toLocaleString('fr-FR')} CFP</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <div class="session-duration">${h}h${String(m).padStart(2,'0')}</div>
+      <span class="paid-badge ${payee?'yes':'no'}" onclick="togglePayee(${s.id},'${source}')">
+        ${payee?'✓ Payée':'✗ Non payée'}
+      </span>
+      ${source==='sessions'?`<div style="display:flex;gap:4px">
+        <button class="qty-btn" onclick="openEditSession(${s.id})" style="font-size:12px">✏️</button>
+        <button class="qty-btn" onclick="deleteSession(${s.id})" style="font-size:12px;color:var(--red)">🗑</button>
+      </div>`:''}
+    </div>
+  </div>`;
+}
+function renderSessionsHistorique(){
+  const c=document.getElementById('sessionsHistorique');
+  const allOld=[];
+  for(const h of historique){for(const s of (h.sessions||[]))allOld.push(s);}
+  if(!allOld.length){c.innerHTML='<div class="empty-state">Aucune session archivée</div>';return;}
+  c.innerHTML=[...allOld].sort((a,b)=>new Date(b.debut)-new Date(a.debut)).map(s=>renderSessionRow(s,'historique')).join('');
+}
 function updateHeuresStats(){
+  // Toutes sessions (actives)
   const tm=sessions.reduce((a,s)=>a+s.dureeMin,0);
-  const td=sessions.reduce((a,s)=>a+Math.round(s.dureeMin/60*settings.tauxH),0);
-  const tp=sessions.reduce((a,s)=>a+(s.paiements||[]).reduce((b,p)=>b+p.montant,0),0);
+  // Solde à payer = sessions NON payées (actives + historique)
+  const allS=[...sessions];
+  for(const h of historique)for(const s of (h.sessions||[]))allS.push(s);
+  const nonPayees=allS.filter(s=>!s.payee);
+  const payees=allS.filter(s=>s.payee);
+  const solde=nonPayees.reduce((a,s)=>a+Math.round(s.dureeMin/60*settings.tauxH),0);
+  const dejaPaye=payees.reduce((a,s)=>a+Math.round(s.dureeMin/60*settings.tauxH),0);
   document.getElementById('statTotalH').textContent=`${Math.floor(tm/60)}h${String(tm%60).padStart(2,'0')}`;
-  document.getElementById('statDu').textContent=Math.max(0,td-tp).toLocaleString('fr-FR')+' CFP';
-  document.getElementById('statPaye').textContent=tp.toLocaleString('fr-FR')+' CFP';
+  document.getElementById('statDu').textContent=solde.toLocaleString('fr-FR')+' CFP';
+  document.getElementById('statPaye').textContent=dejaPaye.toLocaleString('fr-FR')+' CFP';
   document.getElementById('statSessions').textContent=sessions.length;
 }
 
@@ -847,10 +878,15 @@ function renderCloture(){
 }
 function renderHistorique(){
   const c=document.getElementById('historiqueList');if(!historique.length){c.innerHTML='<div class="empty-state">Aucun historique</div>';return;}
-  c.innerHTML=[...historique].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(h=>`<div class="historique-item" onclick="showHistorique('${h.date}')">
-    <div class="historique-date">${new Date(h.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>
-    <div class="historique-total">${h.totalEncaisse.toLocaleString('fr-FR')} CFP encaissés</div>
-    <div class="historique-detail">${h.nbVentes} vente(s) · ${h.vendeur||'?'}</div>
+  c.innerHTML=[...historique].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(h=>`<div class="historique-item">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+      <div onclick="showHistorique('${h.date}')" style="flex:1;cursor:pointer">
+        <div class="historique-date">${new Date(h.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>
+        <div class="historique-total">${h.totalEncaisse.toLocaleString('fr-FR')} CFP encaissés</div>
+        <div class="historique-detail">${h.nbVentes} vente(s) · ${h.vendeur||'?'}</div>
+      </div>
+      <button onclick="genererPDFHistorique('${h.date}')" style="background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--accent);font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0">📄 PDF</button>
+    </div>
   </div>`).join('');
 }
 function showHistorique(date){
@@ -874,7 +910,7 @@ async function confirmerCloture(){
   historique.push({date,vendeur:settings.prenom||'',nbVentes:ventes.length,totalEncaisse:tenc,nbSessions:sessions.length,heuresTotal:`${Math.floor(tm/60)}h${String(tm%60).padStart(2,'0')}`,ventes:[...ventes],sessions:[...sessions],stockFinal:articles.map(a=>({id:a.id,nom:a.nom,quantite:a.quantite}))});
   ventes=[];sessions=[];sessionActive=null;saveDB();closeModal('modalCloture');
   if(settings.googleUrl)await syncToGoogle(false);
-  renderCloture();renderSessions();updatePointageUI();showToast('✓ Journée clôturée');
+  renderCloture();renderSessions();renderSessionsHistorique();updatePointageUI();showToast('✓ Journée clôturée');
 }
 
 // GOOGLE SYNC
@@ -882,7 +918,7 @@ async function syncToGoogle(manual=true){
   if(!settings.googleUrl){if(manual)showToast('⚠ Google Sheets non configuré');return false;}
   setSyncStatus('loading','Sync...');
   try{
-    await fetch(settings.googleUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'sync',vendeur:settings.prenom||'',date:new Date().toISOString(),articles,ventes,historique:historique.slice(-30),sessions})});
+    await fetch(settings.googleUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'sync',vendeur:settings.prenom||'',date:new Date().toISOString(),articles,ventes,historique:historique.slice(-30),sessions,allSessions:[...sessions,...historique.flatMap(h=>h.sessions||[])]})});
     settings.lastSync=new Date().toISOString();saveDB();setSyncStatus('ok','Synced');
     if(manual)showToast('☁️ Synchronisé');return true;
   }catch(e){setSyncStatus('err','Erreur');if(manual)showToast('❌ Erreur sync');return false;}
@@ -894,6 +930,40 @@ async function loadFromGoogle(){
 }
 function setSyncStatus(s,l){const d=document.getElementById('syncDot'),lb=document.getElementById('syncLabel');if(!d||!lb)return;d.className='sync-dot';if(s==='ok')d.classList.add('ok');else if(s==='err')d.classList.add('err');else if(s==='loading')d.classList.add('loading');lb.textContent=l;}
 
+function genererPDFHistorique(date){
+  const h=historique.find(x=>x.date===date);if(!h){showToast('❌ Historique introuvable');return;}
+  const{jsPDF}=window.jspdf,doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const vendor=h.vendeur||'',dateStr=new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const tenc=h.totalEncaisse,trem=(h.ventes||[]).reduce((a,v)=>a+(v.remisePanier||0)+(v.remiseEncaissement||0),0);
+  doc.setFillColor(15,8,32);doc.rect(0,0,210,42,'F');
+  doc.setTextColor(201,168,76);doc.setFontSize(20);doc.text('Debajah Création',15,16);
+  doc.setFontSize(10);doc.setTextColor(160,140,200);doc.text('Rapport de clôture journalière',15,24);doc.text(dateStr.charAt(0).toUpperCase()+dateStr.slice(1),15,31);
+  if(vendor){doc.setTextColor(201,168,76);doc.text('Vendeur : '+vendor,15,38);}
+  doc.setFontSize(8);doc.setTextColor(120,100,160);doc.text('v1.1 — By Diego OLAYA & Claude 4.6',195,38,{align:'right'});
+  let y=50;
+  const sec=(t)=>{if(y>260){doc.addPage();y=15;}doc.setFontSize(12);doc.setTextColor(100,60,180);doc.text(t,15,y);y+=4;doc.setDrawColor(201,168,76);doc.line(15,y,195,y);y+=6;doc.setFontSize(9);doc.setTextColor(50,50,50);};
+  const ln=(l,v,col=null)=>{if(y>275){doc.addPage();y=15;}if(col)doc.setTextColor(...col);else doc.setTextColor(50,50,50);doc.text(String(l),15,y);doc.text(String(v),195,y,{align:'right'});y+=5;};
+  sec('RÉSUMÉ');ln('Ventes',h.nbVentes);ln('Total encaissé',tenc.toLocaleString('fr-FR')+' CFP');
+  if(trem>0)ln('Remises accordées','-'+trem.toLocaleString('fr-FR')+' CFP',[0,150,80]);y+=4;
+  const byD={};(h.ventes||[]).forEach(v=>{byD[v.devise]=(byD[v.devise]||0)+v.montantEncaisse;});
+  if(Object.keys(byD).length){sec('PAR DEVISE');for(const[d,m]of Object.entries(byD))ln('  '+d,(d==='CFP'||d==='TPE')?m.toLocaleString('fr-FR')+' CFP':m+' '+d);y+=4;}
+  if(h.heuresTotal){sec('HEURES');ln('Sessions',h.nbSessions||0);ln('Total',h.heuresTotal);y+=4;}
+  sec('VENTES');
+  for(const v of (h.ventes||[])){if(y>265){doc.addPage();y=15;}const hr=new Date(v.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    doc.setFont(undefined,'bold');doc.text(`${hr} — ${v.montantEncaisse.toLocaleString('fr-FR')} CFP (${v.devise})`,15,y);y+=4;doc.setFont(undefined,'normal');
+    for(const a of (v.articles||[])){if(y>275){doc.addPage();y=15;}doc.text(`  • ${a.nom} x${a.qty} = ${a.total.toLocaleString('fr-FR')} CFP`,18,y);y+=4;}
+    if(v.remisePanier>0){doc.setTextColor(0,150,80);doc.text(`  Remise panier: -${v.remisePanier.toLocaleString('fr-FR')} CFP`,18,y);y+=4;doc.setTextColor(50,50,50);}
+    if(v.remiseEncaissement>0){doc.setTextColor(0,150,80);doc.text(`  Remise encaissement: -${v.remiseEncaissement.toLocaleString('fr-FR')} CFP`,18,y);y+=4;doc.setTextColor(50,50,50);}y+=2;
+  }
+  if(h.stockFinal&&h.stockFinal.length){
+    if(y>220){doc.addPage();y=15;}sec('STOCK FINAL');
+    const byCat={};h.stockFinal.forEach(a=>{if(!byCat[a.categorie||'divers'])byCat[a.categorie||'divers']=[];byCat[a.categorie||'divers'].push(a);});
+    for(const[cat,arts]of Object.entries(byCat)){if(y>270){doc.addPage();y=15;}doc.setFont(undefined,'bold');doc.text(cat.toUpperCase(),15,y);y+=4;doc.setFont(undefined,'normal');
+      for(const a of arts){if(y>275){doc.addPage();y=15;}a.quantite===0?doc.setTextColor(200,60,60):a.quantite<=2?doc.setTextColor(200,130,0):doc.setTextColor(50,50,50);doc.text(`  ${a.nom}: ${a.quantite}`,15,y);y+=4;}y+=2;}
+  }
+  const pg=doc.internal.getNumberOfPages();for(let i=1;i<=pg;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(160,160,160);doc.text(`Debajah Création${vendor?' — '+vendor:''} · ${date} · Page ${i}/${pg}`,105,292,{align:'center'});}
+  doc.save(`cloture_${vendor}_${date}.pdf`);showToast('📄 PDF généré');
+}
 // PDF
 function genererPDF(){
   const{jsPDF}=window.jspdf,doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
@@ -941,7 +1011,7 @@ function importStockJSON(e){const f=e.target.files[0];if(!f)return;const r=new F
 function showPage(id,btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id)?.classList.add('active');btn?.classList.add('active');
-  if(id==='inventaire'){renderCatFilter();filterArticles();}if(id==='cloture')renderCloture();if(id==='params')loadParamsUI();
+  if(id==='inventaire'){renderCatFilter();filterArticles();}if(id==='cloture')renderCloture();if(id==='params')loadParamsUI();if(id==='pointage'){renderSessions();renderSessionsHistorique();}
 }
 function openModal(id){document.getElementById(id)?.classList.add('open');}
 function closeModal(id){document.getElementById(id)?.classList.remove('open');}
@@ -949,7 +1019,7 @@ function closeModalOutside(e,id){if(e.target===document.getElementById(id))close
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 
 async function init(){
-  loadDB();updateClock();setInterval(updateClock,1000);updatePointageUI();renderSessions();renderCatFilter();filterArticles();renderCloture();updateRatesUI();fetchRates();
+  loadDB();updateClock();setInterval(updateClock,1000);updatePointageUI();renderSessions();renderSessionsHistorique();renderCatFilter();filterArticles();renderCloture();updateRatesUI();fetchRates();
   if(settings.googleUrl)loadFromGoogle();
   if(!localStorage.getItem('deb_settings')){pinMode='setup1';document.getElementById('pinPrompt').textContent='Choisissez votre PIN à 4 chiffres';}
 }
