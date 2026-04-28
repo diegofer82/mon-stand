@@ -192,8 +192,9 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
     <div class="stat-card"><div class="stat-value" id="statPaye" style="color:var(--green)">0 CFP</div><div class="stat-label">Déjà payé</div></div>
     <div class="stat-card"><div class="stat-value" id="statSessions">0</div><div class="stat-label">Sessions</div></div>
   </div>
-  <div style="margin-bottom:10px">
+  <div class="btn-row" style="margin-bottom:10px">
     <button class="btn btn-outline" onclick="openAddSession()">+ Ajouter session</button>
+    <button class="btn btn-blue btn-sm" onclick="syncHeures()" style="width:auto;padding:11px 14px">☁️ Sync</button>
   </div>
   <div class="card"><div class="card-title">📅 Sessions du mois en cours</div><div id="sessionsList"><div class="empty-state">Aucune session</div></div></div>
   <div class="card"><div class="card-title">🗂 Historique des sessions</div><div id="sessionsHistorique"><div class="empty-state">Aucun historique</div></div></div>
@@ -598,10 +599,15 @@ function saveSession(){
   const debut=new Date(date+'T'+dt),fin=new Date(date+'T'+ft);
   if(fin<=debut){showToast('⚠ Départ avant arrivée');return;}
   const dur=Math.round((fin-debut)/60000);
-  const id=document.getElementById('editSessionId').value;
-  if(id){const s=sessions.find(x=>x.id==id);if(s){s.debut=debut.toISOString();s.fin=fin.toISOString();s.dureeMin=dur;s.commentaire=com;}}
+  const rawId=document.getElementById('editSessionId').value;
+  const isHist=rawId.startsWith('hist_');
+  const id=isHist?parseInt(rawId.replace('hist_','')):rawId;
+  if(id){
+    let s=isHist?findSessionInHistorique(id):sessions.find(x=>x.id==id);
+    if(s){s.debut=debut.toISOString();s.fin=fin.toISOString();s.dureeMin=dur;s.commentaire=com;}
+  }
   else sessions.push({id:Date.now(),debut:debut.toISOString(),fin:fin.toISOString(),dureeMin:dur,commentaire:com,paiements:[]});
-  saveDB();renderSessions();closeModal('modalAddSession');showToast('✓ Session enregistrée');
+  saveDB();renderSessions();renderSessionsHistorique();closeModal('modalAddSession');showToast('✓ Session enregistrée');
 }
 function deleteSession(id){if(!confirm('Supprimer cette session ?'))return;sessions=sessions.filter(x=>x.id!==id);saveDB();renderSessions();}
 function openPaiementModal(sid){
@@ -619,6 +625,38 @@ function savePaiement(){
   const s=sessions.find(x=>x.id===sid);if(!s)return;
   if(!s.paiements)s.paiements=[];s.paiements.push({id:Date.now(),montant:m,date:d});
   saveDB();renderSessions();closeModal('modalPaiement');showToast('✓ Paiement enregistré');
+}
+function findSessionInHistorique(id){
+  for(const h of historique){const s=(h.sessions||[]).find(x=>x.id===id);if(s)return s;}
+  return null;
+}
+function openEditSessionHistorique(id){
+  const s=findSessionInHistorique(id);if(!s)return;
+  document.getElementById('editSessionId').value='hist_'+id;
+  document.getElementById('modalSessionTitle').textContent='✏️ Modifier (historique)';
+  document.getElementById('sessionDate').value=new Date(s.debut).toISOString().split('T')[0];
+  const dh=new Date(s.debut),fh=new Date(s.fin||s.debut);
+  document.getElementById('sessionDebut').value=String(dh.getHours()).padStart(2,'0')+':'+String(dh.getMinutes()).padStart(2,'0');
+  document.getElementById('sessionFin').value=String(fh.getHours()).padStart(2,'0')+':'+String(fh.getMinutes()).padStart(2,'0');
+  document.getElementById('sessionComment').value=s.commentaire||'';
+  openModal('modalAddSession');
+}
+function deleteSessionHistorique(id){
+  if(!confirm('Supprimer cette session de l\'historique ?'))return;
+  for(const h of historique){h.sessions=(h.sessions||[]).filter(x=>x.id!==id);}
+  saveDB();renderSessionsHistorique();updateHeuresStats();showToast('🗑 Session supprimée');
+}
+async function syncHeures(){
+  if(!settings.googleUrl){showToast('⚠ Google Sheets non configuré');return;}
+  setSyncStatus('loading','Sync...');
+  const allSessions=[...sessions,...historique.flatMap(h=>h.sessions||[])];
+  try{
+    await fetch(settings.googleUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'sync',vendeur:settings.prenom||'',date:new Date().toISOString(),
+        articles,ventes,historique:historique.slice(-30),sessions,allSessions})});
+    settings.lastSync=new Date().toISOString();saveDB();setSyncStatus('ok','Synced');
+    showToast('☁️ Heures synchronisées');
+  }catch(e){setSyncStatus('err','Erreur');showToast('❌ Erreur sync');}
 }
 function togglePayee(id,source){
   // source = 'sessions' ou 'historique'
@@ -660,7 +698,10 @@ function renderSessionRow(s,source){
       ${source==='sessions'?`<div style="display:flex;gap:4px">
         <button class="qty-btn" onclick="openEditSession(${s.id})" style="font-size:12px">✏️</button>
         <button class="qty-btn" onclick="deleteSession(${s.id})" style="font-size:12px;color:var(--red)">🗑</button>
-      </div>`:''}
+      </div>`:`<div style="display:flex;gap:4px">
+        <button class="qty-btn" onclick="openEditSessionHistorique(${s.id})" style="font-size:12px">✏️</button>
+        <button class="qty-btn" onclick="deleteSessionHistorique(${s.id})" style="font-size:12px;color:var(--red)">🗑</button>
+      </div>`}
     </div>
   </div>`;
 }
@@ -669,18 +710,28 @@ function renderSessionsHistorique(){
   const allOld=[];
   for(const h of historique){for(const s of (h.sessions||[]))allOld.push(s);}
   if(!allOld.length){c.innerHTML='<div class="empty-state">Aucune session archivée</div>';return;}
+  // Compatibilité ancien format : si pas de champ payee mais paiements[], déduire
+  for(const s of allOld){
+    if(s.payee===undefined){
+      const du=Math.round((s.dureeMin||0)/60*settings.tauxH);
+      const paye=(s.paiements||[]).reduce((a,p)=>a+(p.montant||0),0);
+      s.payee = paye>=du && du>0;
+    }
+  }
   c.innerHTML=[...allOld].sort((a,b)=>new Date(b.debut)-new Date(a.debut)).map(s=>renderSessionRow(s,'historique')).join('');
+  updateHeuresStats();
 }
 function updateHeuresStats(){
-  // Toutes sessions (actives)
   const tm=sessions.reduce((a,s)=>a+s.dureeMin,0);
-  // Solde à payer = sessions NON payées (actives + historique)
   const allS=[...sessions];
-  for(const h of historique)for(const s of (h.sessions||[]))allS.push(s);
+  for(const h of historique)for(const s of (h.sessions||[])){
+    if(s.payee===undefined){const du=Math.round((s.dureeMin||0)/60*settings.tauxH);const paye=(s.paiements||[]).reduce((a,p)=>a+(p.montant||0),0);s.payee=paye>=du&&du>0;}
+    allS.push(s);
+  }
   const nonPayees=allS.filter(s=>!s.payee);
   const payees=allS.filter(s=>s.payee);
-  const solde=nonPayees.reduce((a,s)=>a+Math.round(s.dureeMin/60*settings.tauxH),0);
-  const dejaPaye=payees.reduce((a,s)=>a+Math.round(s.dureeMin/60*settings.tauxH),0);
+  const solde=nonPayees.reduce((a,s)=>a+Math.round((s.dureeMin||0)/60*settings.tauxH),0);
+  const dejaPaye=payees.reduce((a,s)=>a+Math.round((s.dureeMin||0)/60*settings.tauxH),0);
   document.getElementById('statTotalH').textContent=`${Math.floor(tm/60)}h${String(tm%60).padStart(2,'0')}`;
   document.getElementById('statDu').textContent=solde.toLocaleString('fr-FR')+' CFP';
   document.getElementById('statPaye').textContent=dejaPaye.toLocaleString('fr-FR')+' CFP';
@@ -925,8 +976,41 @@ async function syncToGoogle(manual=true){
 }
 async function loadFromGoogle(){
   if(!settings.googleUrl)return;setSyncStatus('loading','Chargement...');
-  try{const r=await fetch(settings.googleUrl+'?action=load');const data=await r.json();if(data.articles?.length){articles=data.articles;saveDB();showToast('☁️ Stock chargé');}setSyncStatus('ok','Connecté');}
-  catch(e){setSyncStatus('err','Hors ligne');showToast('⚠ Mode hors ligne — données locales');}
+  try{
+    const r=await fetch(settings.googleUrl+'?action=load');
+    const data=await r.json();
+    let changed=false;
+    // Stock
+    if(data.articles?.length){articles=data.articles;changed=true;}
+    // Sessions — injecter dans un bucket spécial de l'historique
+    if(data.allSessions?.length){
+      // Toutes les sessions déjà connues localement (IDs)
+      const localIds=new Set([
+        ...sessions.map(s=>s.id),
+        ...historique.flatMap(h=>(h.sessions||[]).map(s=>s.id))
+      ]);
+      // Sessions inconnues depuis Sheets → on les ajoute dans un bucket "_sheets"
+      const nouvelles=data.allSessions.filter(s=>!localIds.has(s.id));
+      if(nouvelles.length){
+        let bucket=historique.find(h=>h.date==='_sheets');
+        if(!bucket){bucket={date:'_sheets',vendeur:'Import Sheets',nbVentes:0,totalEncaisse:0,sessions:[]};historique.push(bucket);}
+        bucket.sessions.push(...nouvelles);
+        changed=true;
+      }
+      // Mettre à jour le statut payee des sessions existantes depuis Sheets
+      for(const remote of data.allSessions){
+        let local=sessions.find(s=>s.id===remote.id);
+        if(!local)for(const h of historique)local=(h.sessions||[]).find(s=>s.id===remote.id)||local;
+        if(local&&remote.payee!==undefined)local.payee=remote.payee;
+      }
+    }
+    if(changed){saveDB();renderSessions();renderSessionsHistorique();}
+    setSyncStatus('ok','Connecté');
+    showToast('☁️ Données chargées depuis Google Sheets');
+  }catch(e){
+    setSyncStatus('err','Hors ligne');
+    showToast('⚠ Mode hors ligne — données locales utilisées');
+  }
 }
 function setSyncStatus(s,l){const d=document.getElementById('syncDot'),lb=document.getElementById('syncLabel');if(!d||!lb)return;d.className='sync-dot';if(s==='ok')d.classList.add('ok');else if(s==='err')d.classList.add('err');else if(s==='loading')d.classList.add('loading');lb.textContent=l;}
 
