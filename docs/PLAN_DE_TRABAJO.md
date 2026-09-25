@@ -41,6 +41,7 @@
 | 10 | PIN en claro en `localStorage`, `1234` por defecto | l. 414 | Protección nula |
 | 11 | `innerHTML` con nombres/comentarios sin escapar | l. 690, 775… | HTML roto / inyección |
 | 12 | `user-scalable=no`, `</div>` sobrante, `google-apps-script.js` ausente del repo | l. 5, 317, 401 | Accesibilidad, HTML inválido, config no reproducible |
+| 13 | Cobro en divisa: `montantEncaisse` guardado en la divisa y sumado como CFP; `remiseEncaissement` = CFP − divisa | `validerVente` | «Total encaissé» falso y remises ficticias (detectado en la Fase 0) |
 
 ---
 
@@ -209,14 +210,17 @@ Navegación: 4 pestañas (Caja · Stock · Horas · Cierre); Ajustes en el menú
 Estimaciones orientativas en días de trabajo efectivo.
 
 ### Fase 0 — Estabilizar la v1.3 → v1.4 (≈ 1 día · GitHub Pages)
-- [ ] Fechas en hora local (bug 1)
-- [ ] Tasas: EUR fijo 119,332; resto derivado de tasas EUR; conservar decimales (bugs 2–3)
-- [ ] `stockFinal` con categoría; clave única por cierre (bugs 6–7)
-- [ ] Botón **"Export complet (JSON)"**: articles, ventes, sessions, sessionActive, historique, rates, settings (sin PIN) — imprescindible para migrar: el nuevo dominio no puede leer el `localStorage` de github.io
-- [ ] Quitar la librería XLSX; `user-scalable=no`; `</div>` sobrante (bugs 9, 12)
+- [x] Fechas en hora local (bug 1)
+- [x] Tasas: EUR fijo 119,332; resto derivado de tasas EUR; conservar decimales (bugs 2–3)
+- [x] `stockFinal` con categoría; clave única por cierre (bugs 6–7)
+- [x] Botón **"Export complet (JSON)"**: articles, ventes, sessions, sessionActive, historique, rates, settings (sin PIN) — imprescindible para migrar: el nuevo dominio no puede leer el `localStorage` de github.io
+- [x] Quitar la librería XLSX; `user-scalable=no`; `</div>` sobrante (bugs 9, 12)
+- [x] Extra: cobro en divisa (bug 13) — `montantEncaisse` siempre en CFP, más `montantDevise` y `tauxCFP` en los pagos en divisa
 - La sync con Google Sheets no se toca: se retira con la v2.
 
 **Hecho cuando**: v1.4 en producción y el export probado en el teléfono de la vendedora.
+
+**Estado**: v1.4 mergeada en `main` (PR #2). Falta probar el export en el teléfono de la vendedora.
 
 ### Fase 1 — Diseño con /design (≈ 2–3 días)
 - [ ] Design System "Debajah Création"
@@ -265,6 +269,8 @@ Estimaciones orientativas en días de trabajo efectivo.
 
 ### Fase 6 — Migración y corte (≈ 1 día + 1 día de mercado)
 - [ ] Importador "v1 JSON → D1" en `/admin` (idempotente, con informe de lo importado)
+  - Ventas v1.4: `montantEncaisse` en CFP + `montantDevise`/`tauxCFP` en divisa. Ventas v1.3 (sin `montantDevise`): `montantEncaisse` está en la divisa de `devise` y no guarda la tasa
+  - Cierres v1.3 sin `id` (el export les asigna `clo_legacy_N`) y con fecha UTC si se cerraron antes de las 11:00
 - [ ] Si hay datos en Google Sheets: exportarlos una vez e importarlos
 - [ ] Un día de mercado con v1 y v2 en paralelo; comparar cierres
 - [ ] Corte: `index.html` raíz → página de redirección a `workers.dev`; v1 archivada en `legacy/`
