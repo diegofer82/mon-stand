@@ -12,6 +12,7 @@ Application web pour gérer un stand artisanal : pointage, inventaire, caisse mu
 - **Clôture** : résumé journalier, export PDF, historique des journées passées
 - **Taux de change** : récupérés automatiquement depuis Internet, modifiables manuellement
 - **Hors ligne** : fonctionne sans connexion une fois chargée (données sauvegardées sur le téléphone)
+- **Export complet** : toutes les données du téléphone dans un fichier JSON (Config → Export complet)
 
 ---
 
@@ -73,8 +74,9 @@ L'URL reste la même, les données sur le téléphone ne sont pas effacées.
 
 ## 📊 Taux de change
 
-L'app utilise [Frankfurter API](https://api.frankfurter.app) (gratuit, sans clé).  
-Les taux sont récupérés automatiquement au démarrage.  
+Le franc CFP est arrimé à l'euro : **1 € = 119,332 CFP** (fixe, non modifiable).  
+Les autres devises (AUD, USD, NZD, JPY) sont calculées à partir des taux de l'euro publiés par la BCE, via [Frankfurter API](https://frankfurter.dev) (gratuit, sans clé), avec [open.er-api.com](https://open.er-api.com) en secours.  
+Les taux sont récupérés automatiquement au démarrage et gardent leurs décimales (1 ¥ ≈ 0,66 CFP).  
 En cas de problème de connexion, les derniers taux enregistrés sont utilisés.  
 Tu peux toujours modifier manuellement via le bouton **📊 Taux** en haut de l'app.
 
@@ -93,7 +95,7 @@ Dans l'app, section **Stock** :
 
 Toutes les données sont stockées **localement sur le téléphone** (pas de compte, pas de cloud).  
 Si le navigateur est vidé, les données sont perdues.  
-👉 Pour la V2 : synchronisation Google Sheets optionnelle (à activer).
+👉 Faire régulièrement **Config → Export complet (JSON)** et garder le fichier : il contient stock, ventes, heures, historique, taux et réglages (sans le PIN). C'est aussi ce fichier qui servira à passer à la v2.
 
 ---
 

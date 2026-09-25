@@ -2,14 +2,13 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f0820">
 <title>Debajah Création</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#0f0820;--surface:#1c1133;--surface2:#261845;--surface3:#311f55;--accent:#c9a84c;--accent2:#e8c876;--green:#4caf82;--red:#e05c5c;--blue:#5b9bd5;--text:#f0eaf8;--text2:#a898c8;--text3:#6b5f8a;--border:rgba(201,168,76,0.2);--radius:16px;--radius-sm:10px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -38,7 +37,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text2)}
 .btn:active{transform:scale(0.97)}.btn-sm{padding:7px 13px;font-size:12px;width:auto}.btn-row{display:flex;gap:8px}
 .input-group{margin-bottom:10px}.input-label{font-size:11px;color:var(--text3);margin-bottom:5px;display:block}
-input,select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;padding:10px 13px;outline:none;-webkit-appearance:none}
+input,select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;padding:10px 13px;outline:none;-webkit-appearance:none}
 input:focus,select:focus{border-color:var(--accent)}select option{background:var(--surface2)}
 .section-title{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);margin:14px 0 7px}
 .divider{height:1px;background:var(--border);margin:10px 0}
@@ -271,6 +270,14 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
     <button class="btn btn-outline" onclick="openModal('modalChangePIN')">Changer le PIN</button>
   </div>
   <div class="card">
+    <div class="card-title">📦 Export complet</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Toutes les données du téléphone (stock, ventes, heures, historique, taux, réglages — sans le PIN) dans un fichier JSON. À faire avant de changer de téléphone ou de version.</div>
+    <div class="btn-row">
+      <button class="btn btn-gold" onclick="exportComplet()">⬇️ Export complet (JSON)</button>
+      <button class="btn btn-outline btn-sm" id="btnPartagerExport" onclick="exportComplet(true)" style="display:none;padding:11px 14px">📤 Partager</button>
+    </div>
+  </div>
+  <div class="card">
     <div class="card-title">💾 Sauvegarde locale</div>
     <div class="btn-row">
       <button class="btn btn-outline" onclick="exportStockJSON()">📤 Exporter stock</button>
@@ -278,7 +285,7 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
     </div>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importStockJSON(event)">
   </div>
-  <div class="app-footer">🌿 Debajah Création — Mon Stand v1.3<br>Développé avec ❤️ pour le marché artisanal<br>By Diego OLAYA &amp; Claude 4.6</div>
+  <div class="app-footer">🌿 Debajah Création — Mon Stand v1.4<br>Développé avec ❤️ pour le marché artisanal<br>By Diego OLAYA &amp; Claude 4.6</div>
 </div>
 
 <!-- MODALS -->
@@ -312,7 +319,6 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
       <button class="btn btn-gold" onclick="saveArticle()">✓ Enregistrer</button>
     </div>
     <button class="btn btn-red" onclick="deleteArticle()" style="margin-top:7px">🗑 Supprimer cet article</button>
-    </div>
   </div>
 </div>
 
@@ -408,9 +414,13 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
 </div>
 
 <script>
+const APP_VERSION='1.4';
 const DEVISES=['AUD','USD','EUR','NZD','JPY'];
+// Le franc CFP est arrimé à l'euro : 1 € = 119,332 CFP (parité fixe)
+const EUR_CFP=119.332;
+const DEFAULT_RATES={AUD:73.77,USD:104.98,EUR:EUR_CFP,NZD:59.52,JPY:0.661};
 let articles=[],sessions=[],ventes=[],historique=[],sessionActive=null;
-let rates={AUD:84,USD:110,EUR:119,NZD:64,JPY:1};
+let rates={...DEFAULT_RATES};
 let settings={pin:'1234',prenom:'',tauxH:1500,googleUrl:'',lastSync:null};
 let panier=[],selectedDevise=null,currentCat='tous',pinBuffer='',pinMode='verify';
 
@@ -440,10 +450,19 @@ function loadDB(){
     if(v)ventes=JSON.parse(v);
     if(h)historique=JSON.parse(h);
     if(sa)sessionActive=JSON.parse(sa);
-    if(r)rates=JSON.parse(r);
+    if(r)rates={...DEFAULT_RATES,...JSON.parse(r)};
     if(st)settings={...settings,...JSON.parse(st)};
   }catch(e){}
+  // v1.3 arrondissait les taux à l'entier : EUR à 119, JPY à 1 (au lieu de ~0,66)
+  for(const d of DEVISES)if(!(rates[d]>0))rates[d]=DEFAULT_RATES[d];
+  rates.EUR=EUR_CFP;
+  if(rates.JPY===1)rates.JPY=DEFAULT_RATES.JPY;
+  // v1.3 identifiait les clôtures par leur date : deux clôtures le même jour se confondaient
+  historique.forEach((h,i)=>{if(!h.id)h.id='clo_legacy_'+i;});
 }
+
+// Date du téléphone au format AAAA-MM-JJ (toISOString() donne la date UTC : la veille avant 11h à Nouméa)
+function dateLocale(d=new Date()){const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
 
 function loadDefaultInventaire(){
   articles=[
@@ -513,19 +532,20 @@ function changePIN(){
 }
 
 // TAUX
+// Taux en base EUR (BCE via Frankfurter, secours open.er-api), convertis en CFP par la parité fixe
 async function fetchRates(){
   setSyncStatus('loading','Taux...');
+  const autres=DEVISES.filter(d=>d!=='EUR');
   const apis=[
-    async()=>{const r=await fetch('https://open.er-api.com/v6/latest/XPF');return r.json();},
-    async()=>{const r=await fetch('https://api.frankfurter.app/latest?from=XPF&to=AUD,USD,EUR,NZD,JPY');return r.json();},
+    async()=>{const r=await fetch('https://api.frankfurter.dev/v1/latest?base=EUR&symbols='+autres.join(','));if(!r.ok)throw new Error(r.status);return(await r.json()).rates;},
+    async()=>{const r=await fetch('https://open.er-api.com/v6/latest/EUR');if(!r.ok)throw new Error(r.status);return(await r.json()).rates;},
   ];
   for(const api of apis){
     try{
-      const data=await api();
-      const r=data.rates||data.conversion_rates;
-      if(!r)continue;
-      for(const d of DEVISES){if(r[d]&&r[d]>0)rates[d]=Math.round(1/r[d]);}
-      rates.EUR=119;
+      const r=await api();
+      if(!r||!autres.every(d=>r[d]>0))continue;
+      for(const d of autres)rates[d]=Math.round(EUR_CFP/r[d]*10000)/10000;
+      rates.EUR=EUR_CFP;
       saveDB();updateRatesUI();
       document.getElementById('ratesLastUpdate').textContent='Mis à jour '+new Date().toLocaleTimeString('fr-FR');
       setSyncStatus('ok','Taux OK');return;
@@ -536,15 +556,17 @@ async function fetchRates(){
 }
 
 function updateRatesUI(){
-  for(const d of DEVISES){const el=document.getElementById('rate'+d);if(el)el.textContent=rates[d]?`1${d}=${rates[d]}`:'—';}
+  for(const d of DEVISES){const el=document.getElementById('rate'+d);if(el)el.textContent=rates[d]?`1${d}=${fmtTaux(rates[d])}`:'—';}
   renderRateEditRows();renderDeviseGrid();
 }
+function fmtTaux(v){return v.toLocaleString('fr-FR',{maximumFractionDigits:3});}
 function renderRateEditRows(){
   const c=document.getElementById('rateEditRows');if(!c)return;
-  c.innerHTML=DEVISES.map(d=>`<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px"><span style="width:45px;font-size:12px;color:var(--text2)">${d}</span><input type="number" id="rateInput${d}" value="${rates[d]||''}" placeholder="1 ${d} = ? CFP" min="0"></div>`).join('');
+  c.innerHTML=DEVISES.map(d=>`<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px"><span style="width:45px;font-size:12px;color:var(--text2)">${d}</span><input type="number" id="rateInput${d}" value="${rates[d]||''}" placeholder="1 ${d} = ? CFP" min="0" step="any"${d==='EUR'?' readonly style="opacity:.6"':''}></div>`).join('')
+    +`<div style="font-size:11px;color:var(--text3)">EUR : parité fixe 1 € = ${fmtTaux(EUR_CFP)} CFP. Autres devises : taux BCE de l'euro.</div>`;
 }
 function saveRates(){
-  for(const d of DEVISES){const v=parseFloat(document.getElementById('rateInput'+d)?.value);if(!isNaN(v)&&v>0)rates[d]=v;}
+  for(const d of DEVISES){if(d==='EUR')continue;const v=parseFloat(document.getElementById('rateInput'+d)?.value);if(!isNaN(v)&&v>0)rates[d]=v;}
   saveDB();updateRatesUI();closeModal('modalTaux');showToast('✓ Taux enregistrés');
 }
 
@@ -580,14 +602,14 @@ function updatePointageUI(){
 }
 function openAddSession(){
   document.getElementById('editSessionId').value='';document.getElementById('modalSessionTitle').textContent='+ Ajouter une session';
-  document.getElementById('sessionDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('sessionDate').value=dateLocale();
   document.getElementById('sessionDebut').value='07:00';document.getElementById('sessionFin').value='16:00';
   document.getElementById('sessionComment').value='';openModal('modalAddSession');
 }
 function openEditSession(id){
   const s=sessions.find(x=>x.id===id);if(!s)return;
   document.getElementById('editSessionId').value=id;document.getElementById('modalSessionTitle').textContent='✏️ Modifier la session';
-  document.getElementById('sessionDate').value=new Date(s.debut).toISOString().split('T')[0];
+  document.getElementById('sessionDate').value=dateLocale(s.debut);
   const dh=new Date(s.debut),fh=new Date(s.fin);
   document.getElementById('sessionDebut').value=String(dh.getHours()).padStart(2,'0')+':'+String(dh.getMinutes()).padStart(2,'0');
   document.getElementById('sessionFin').value=String(fh.getHours()).padStart(2,'0')+':'+String(fh.getMinutes()).padStart(2,'0');
@@ -616,7 +638,7 @@ function openPaiementModal(sid){
   document.getElementById('paiementSessionId').value=sid;
   document.getElementById('paiementInfo').textContent=`${new Date(s.debut).toLocaleDateString('fr-FR')} — ${Math.floor(s.dureeMin/60)}h${String(s.dureeMin%60).padStart(2,'0')} — Dû: ${du.toLocaleString('fr-FR')} CFP — Reste: ${reste.toLocaleString('fr-FR')} CFP`;
   document.getElementById('paiementMontant').value=reste;
-  document.getElementById('paiementDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('paiementDate').value=dateLocale();
   openModal('modalPaiement');
 }
 function savePaiement(){
@@ -634,7 +656,7 @@ function openEditSessionHistorique(id){
   const s=findSessionInHistorique(id);if(!s)return;
   document.getElementById('editSessionId').value='hist_'+id;
   document.getElementById('modalSessionTitle').textContent='✏️ Modifier (historique)';
-  document.getElementById('sessionDate').value=new Date(s.debut).toISOString().split('T')[0];
+  document.getElementById('sessionDate').value=dateLocale(s.debut);
   const dh=new Date(s.debut),fh=new Date(s.fin||s.debut);
   document.getElementById('sessionDebut').value=String(dh.getHours()).padStart(2,'0')+':'+String(dh.getMinutes()).padStart(2,'0');
   document.getElementById('sessionFin').value=String(fh.getHours()).padStart(2,'0')+':'+String(fh.getMinutes()).padStart(2,'0');
@@ -736,27 +758,6 @@ function updateHeuresStats(){
   document.getElementById('statDu').textContent=solde.toLocaleString('fr-FR')+' CFP';
   document.getElementById('statPaye').textContent=dejaPaye.toLocaleString('fr-FR')+' CFP';
   document.getElementById('statSessions').textContent=sessions.length;
-}
-
-// EXPORT XLSX HEURES
-function exportHeuresXLSX(){
-  if(!window.XLSX){showToast('⚠ Module Excel non disponible');return;}
-  const wb=XLSX.utils.book_new();
-  const rows=[['Date','Arrivée','Départ','Durée (h)','Commentaire','Dû (CFP)','Payé (CFP)','Solde (CFP)']];
-  for(const s of [...sessions].sort((a,b)=>new Date(a.debut)-new Date(b.debut))){
-    const db=new Date(s.debut),fn=s.fin?new Date(s.fin):null;
-    const du=Math.round(s.dureeMin/60*settings.tauxH),paye=(s.paiements||[]).reduce((a,p)=>a+p.montant,0);
-    rows.push([db.toLocaleDateString('fr-FR'),db.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),fn?fn.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'En cours',Math.round(s.dureeMin/60*100)/100,s.commentaire||'',du,paye,Math.max(0,du-paye)]);
-  }
-  const tm=sessions.reduce((a,s)=>a+s.dureeMin,0),td=sessions.reduce((a,s)=>a+Math.round(s.dureeMin/60*settings.tauxH),0),tp=sessions.reduce((a,s)=>a+(s.paiements||[]).reduce((b,p)=>b+p.montant,0),0);
-  rows.push(['','','TOTAL',Math.round(tm/60*100)/100,'',td,tp,Math.max(0,td-tp)]);
-  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:12},{wch:9},{wch:9},{wch:10},{wch:22},{wch:12},{wch:12},{wch:12}];
-  XLSX.utils.book_append_sheet(wb,ws,'Sessions');
-  const rows2=[['Session','Date paiement','Montant (CFP)']];
-  for(const s of sessions)for(const p of (s.paiements||[]))rows2.push([new Date(s.debut).toLocaleDateString('fr-FR'),p.date,p.montant]);
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows2),'Paiements');
-  XLSX.writeFile(wb,`heures_${settings.prenom||'vendeur'}_${new Date().toISOString().split('T')[0]}.xlsx`);
-  showToast('📊 Excel exporté');
 }
 
 // INVENTAIRE
@@ -868,7 +869,7 @@ function renderDeviseGrid(){
   const c=document.getElementById('deviseGrid');if(!c)return;
   const total=calcTotal();
   c.innerHTML=['CFP','AUD','USD','EUR','NZD','JPY','TPE'].map(d=>{
-    const isTpe=d==='TPE',rate=rates[d]?`1 ${d} = ${rates[d]} CFP`:'';
+    const isTpe=d==='TPE',rate=rates[d]?`1 ${d} = ${fmtTaux(rates[d])} CFP`:'';
     let sug=d==='CFP'||d==='TPE'?total:(rates[d]?convertCFP(total,d)||'':'');
     return`<div class="devise-card ${isTpe?'tpe':''}" id="devCard${d}" onclick="selectDevise('${d}')">
       <div class="devise-name">${isTpe?'💳 Carte / TPE':'💵 '+d}</div>
@@ -891,13 +892,20 @@ function calcMonnaie(d){
 }
 function validerVente(){
   if(!panier.length){showToast('⚠ Panier vide');return;}if(!selectedDevise){showToast('⚠ Mode paiement requis');return;}
-  const st=calcST(),rp=getRemise(),tot=calcTotal(),enc=parseFloat(document.getElementById('devInput'+selectedDevise)?.value)||tot,re=Math.max(0,tot-enc);
+  const st=calcST(),rp=getRemise(),tot=calcTotal(),given=parseFloat(document.getElementById('devInput'+selectedDevise)?.value)||0;
+  // montantEncaisse toujours en CFP (hors monnaie rendue) ; en devise étrangère on garde aussi le montant reçu et le taux appliqué
+  const etranger=selectedDevise!=='CFP'&&selectedDevise!=='TPE',taux=etranger?rates[selectedDevise]:null;
+  const montantDevise=etranger?(given||convertCFP(tot,selectedDevise)||0):null;
+  const enc=Math.min(tot,etranger?Math.round(montantDevise*taux):(given||tot)),re=Math.max(0,tot-enc);
   for(const p of panier){const a=articles.find(x=>x.id===p.articleId);if(a)a.quantite=Math.max(0,a.quantite-p.qty);}
-  ventes.push({id:Date.now(),ts:new Date().toISOString(),articles:panier.map(p=>({articleId:p.articleId,nom:articles.find(x=>x.id===p.articleId)?.nom||'?',qty:p.qty,prixUnit:articles.find(x=>x.id===p.articleId)?.prixCFP||0,total:calcLT(p.articleId,p.qty)})),sousTotal:st,remisePanier:rp,remiseEncaissement:re,total:tot,montantEncaisse:enc,devise:selectedDevise});
+  ventes.push({id:Date.now(),ts:new Date().toISOString(),articles:panier.map(p=>({articleId:p.articleId,nom:articles.find(x=>x.id===p.articleId)?.nom||'?',qty:p.qty,prixUnit:articles.find(x=>x.id===p.articleId)?.prixCFP||0,total:calcLT(p.articleId,p.qty)})),sousTotal:st,remisePanier:rp,remiseEncaissement:re,total:tot,montantEncaisse:enc,devise:selectedDevise,...(etranger?{montantDevise,tauxCFP:taux}:{})});
   saveDB();panier=[];selectedDevise=null;if(document.getElementById('remiseMontant'))document.getElementById('remiseMontant').value='';
   renderPanier();updatePanierBadge();filterArticles();renderCloture();showToast('✓ Vente — '+enc.toLocaleString('fr-FR')+' CFP');
 }
 function clearPanier(){panier=[];selectedDevise=null;if(document.getElementById('remiseMontant'))document.getElementById('remiseMontant').value='';renderPanier();updatePanierBadge();}
+// Montant reçu dans la devise du paiement (les ventes v1.3 le stockaient dans montantEncaisse)
+function montantRecu(v){return v.montantDevise??v.montantEncaisse;}
+function fmtParDevise(d,m){return(d==='CFP'||d==='TPE')?m.toLocaleString('fr-FR')+' CFP':Math.round(m*100)/100+' '+d;}
 
 // CLOTURE
 function renderCloture(){
@@ -905,13 +913,13 @@ function renderCloture(){
   if(!ventes.length){c.innerHTML='<div class="empty-state">Aucune vente aujourd\'hui</div>';}
   else{
     const tst=ventes.reduce((a,v)=>a+v.sousTotal,0),tenc=ventes.reduce((a,v)=>a+v.montantEncaisse,0),trp=ventes.reduce((a,v)=>a+v.remisePanier,0),tre=ventes.reduce((a,v)=>a+v.remiseEncaissement,0);
-    const byD={};ventes.forEach(v=>{byD[v.devise]=(byD[v.devise]||0)+v.montantEncaisse;});
+    const byD={};ventes.forEach(v=>{byD[v.devise]=(byD[v.devise]||0)+montantRecu(v);});
     let h=`<div class="cloture-stat"><span class="cloture-stat-label">Ventes</span><span class="cloture-stat-value">${ventes.length}</span></div>
     <div class="cloture-stat"><span class="cloture-stat-label">Sous-total articles</span><span class="cloture-stat-value">${(tenc+trp+tre).toLocaleString('fr-FR')} CFP</span></div>`;
     if(trp>0)h+=`<div class="cloture-stat"><span class="cloture-stat-label">Remises panier</span><span class="cloture-stat-value" style="color:var(--green)">-${trp.toLocaleString('fr-FR')} CFP</span></div>`;
     if(tre>0)h+=`<div class="cloture-stat"><span class="cloture-stat-label">Remises encaissement</span><span class="cloture-stat-value" style="color:var(--green)">-${tre.toLocaleString('fr-FR')} CFP</span></div>`;
     h+=`<div class="cloture-stat"><span class="cloture-stat-label">Total encaissé</span><span class="cloture-stat-value">${tenc.toLocaleString('fr-FR')} CFP</span></div>`;
-    for(const [d,m] of Object.entries(byD))h+=`<div class="cloture-stat"><span class="cloture-stat-label">· ${d}</span><span class="cloture-stat-value">${(d==='CFP'||d==='TPE')?m.toLocaleString('fr-FR')+' CFP':m+' '+d}</span></div>`;
+    for(const [d,m] of Object.entries(byD))h+=`<div class="cloture-stat"><span class="cloture-stat-label">· ${d}</span><span class="cloture-stat-value">${fmtParDevise(d,m)}</span></div>`;
     c.innerHTML=h;
   }
   const cs=document.getElementById('clotureStock');
@@ -929,19 +937,21 @@ function renderCloture(){
 }
 function renderHistorique(){
   const c=document.getElementById('historiqueList');if(!historique.length){c.innerHTML='<div class="empty-state">Aucun historique</div>';return;}
-  c.innerHTML=[...historique].sort((a,b)=>new Date(b.date)-new Date(a.date)).map(h=>`<div class="historique-item">
+  c.innerHTML=[...historique].sort((a,b)=>(new Date(b.date)-new Date(a.date))||(b.clotureAt||'').localeCompare(a.clotureAt||'')).map(h=>`<div class="historique-item">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-      <div onclick="showHistorique('${h.date}')" style="flex:1;cursor:pointer">
+      <div onclick="showHistorique('${histKey(h)}')" style="flex:1;cursor:pointer">
         <div class="historique-date">${new Date(h.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>
         <div class="historique-total">${h.totalEncaisse.toLocaleString('fr-FR')} CFP encaissés</div>
-        <div class="historique-detail">${h.nbVentes} vente(s) · ${h.vendeur||'?'}</div>
+        <div class="historique-detail">${h.nbVentes} vente(s) · ${h.vendeur||'?'}${h.clotureAt?' · clôturée à '+new Date(h.clotureAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):''}</div>
       </div>
-      <button onclick="genererPDFHistorique('${h.date}')" style="background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--accent);font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0">📄 PDF</button>
+      <button onclick="genererPDFHistorique('${histKey(h)}')" style="background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--accent);font-size:13px;cursor:pointer;white-space:nowrap;flex-shrink:0">📄 PDF</button>
     </div>
   </div>`).join('');
 }
-function showHistorique(date){
-  const h=historique.find(x=>x.date===date);if(!h)return;
+function histKey(h){return h.id||h.date;}
+function findHistorique(key){return historique.find(x=>histKey(x)===key);}
+function showHistorique(key){
+  const h=findHistorique(key);if(!h)return;const date=h.date;
   document.getElementById('modalHistoriqueTitle').textContent='Journée du '+new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   let html=`<div class="cloture-stat"><span class="cloture-stat-label">Total encaissé</span><span class="cloture-stat-value">${h.totalEncaisse.toLocaleString('fr-FR')} CFP</span></div>
   <div class="cloture-stat"><span class="cloture-stat-label">Ventes</span><span class="cloture-stat-value">${h.nbVentes}</span></div>
@@ -949,7 +959,7 @@ function showHistorique(date){
   <div class="divider"></div><div class="section-title">Ventes</div>`;
   for(const v of (h.ventes||[])){
     html+=`<div style="font-size:11px;border-bottom:1px solid rgba(255,255,255,.05);padding:5px 0">
-    ${new Date(v.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} · ${v.montantEncaisse.toLocaleString('fr-FR')} CFP · ${v.devise}
+    ${new Date(v.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} · ${v.montantEncaisse.toLocaleString('fr-FR')} CFP · ${v.montantDevise!=null?v.montantDevise+' ':''}${v.devise}
     ${v.remisePanier>0?` <span class="tag tag-green">-${v.remisePanier} panier</span>`:''}${v.remiseEncaissement>0?` <span class="tag tag-gold">-${v.remiseEncaissement} enc.</span>`:''}
     <br><span style="color:var(--text3)">${v.articles.map(a=>a.nom+' x'+a.qty).join(', ')}</span></div>`;
   }
@@ -957,8 +967,8 @@ function showHistorique(date){
 }
 function cloturerJournee(){openModal('modalCloture');}
 async function confirmerCloture(){
-  const date=new Date().toISOString().split('T')[0],tenc=ventes.reduce((a,v)=>a+v.montantEncaisse,0),tm=sessions.reduce((a,s)=>a+s.dureeMin,0);
-  historique.push({date,vendeur:settings.prenom||'',nbVentes:ventes.length,totalEncaisse:tenc,nbSessions:sessions.length,heuresTotal:`${Math.floor(tm/60)}h${String(tm%60).padStart(2,'0')}`,ventes:[...ventes],sessions:[...sessions],stockFinal:articles.map(a=>({id:a.id,nom:a.nom,quantite:a.quantite}))});
+  const now=new Date(),date=dateLocale(now),tenc=ventes.reduce((a,v)=>a+v.montantEncaisse,0),tm=sessions.reduce((a,s)=>a+s.dureeMin,0);
+  historique.push({id:'clo_'+now.getTime(),date,clotureAt:now.toISOString(),vendeur:settings.prenom||'',nbVentes:ventes.length,totalEncaisse:tenc,nbSessions:sessions.length,heuresTotal:`${Math.floor(tm/60)}h${String(tm%60).padStart(2,'0')}`,ventes:[...ventes],sessions:[...sessions],stockFinal:articles.map(a=>({id:a.id,nom:a.nom,categorie:a.categorie,quantite:a.quantite}))});
   ventes=[];sessions=[];sessionActive=null;saveDB();closeModal('modalCloture');
   if(settings.googleUrl)await syncToGoogle(false);
   renderCloture();renderSessions();renderSessionsHistorique();updatePointageUI();showToast('✓ Journée clôturée');
@@ -1014,8 +1024,8 @@ async function loadFromGoogle(){
 }
 function setSyncStatus(s,l){const d=document.getElementById('syncDot'),lb=document.getElementById('syncLabel');if(!d||!lb)return;d.className='sync-dot';if(s==='ok')d.classList.add('ok');else if(s==='err')d.classList.add('err');else if(s==='loading')d.classList.add('loading');lb.textContent=l;}
 
-function genererPDFHistorique(date){
-  const h=historique.find(x=>x.date===date);if(!h){showToast('❌ Historique introuvable');return;}
+function genererPDFHistorique(key){
+  const h=findHistorique(key);if(!h){showToast('❌ Historique introuvable');return;}const date=h.date;
   const{jsPDF}=window.jspdf,doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const vendor=h.vendeur||'',dateStr=new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const tenc=h.totalEncaisse,trem=(h.ventes||[]).reduce((a,v)=>a+(v.remisePanier||0)+(v.remiseEncaissement||0),0);
@@ -1023,18 +1033,18 @@ function genererPDFHistorique(date){
   doc.setTextColor(201,168,76);doc.setFontSize(20);doc.text('Debajah Création',15,16);
   doc.setFontSize(10);doc.setTextColor(160,140,200);doc.text('Rapport de clôture journalière',15,24);doc.text(dateStr.charAt(0).toUpperCase()+dateStr.slice(1),15,31);
   if(vendor){doc.setTextColor(201,168,76);doc.text('Vendeur : '+vendor,15,38);}
-  doc.setFontSize(8);doc.setTextColor(120,100,160);doc.text('v1.1 — By Diego OLAYA & Claude 4.6',195,38,{align:'right'});
+  doc.setFontSize(8);doc.setTextColor(120,100,160);doc.text('v'+APP_VERSION+' — By Diego OLAYA & Claude 4.6',195,38,{align:'right'});
   let y=50;
   const sec=(t)=>{if(y>260){doc.addPage();y=15;}doc.setFontSize(12);doc.setTextColor(100,60,180);doc.text(t,15,y);y+=4;doc.setDrawColor(201,168,76);doc.line(15,y,195,y);y+=6;doc.setFontSize(9);doc.setTextColor(50,50,50);};
   const ln=(l,v,col=null)=>{if(y>275){doc.addPage();y=15;}if(col)doc.setTextColor(...col);else doc.setTextColor(50,50,50);doc.text(String(l),15,y);doc.text(String(v),195,y,{align:'right'});y+=5;};
   sec('RÉSUMÉ');ln('Ventes',h.nbVentes);ln('Total encaissé',tenc.toLocaleString('fr-FR')+' CFP');
   if(trem>0)ln('Remises accordées','-'+trem.toLocaleString('fr-FR')+' CFP',[0,150,80]);y+=4;
-  const byD={};(h.ventes||[]).forEach(v=>{byD[v.devise]=(byD[v.devise]||0)+v.montantEncaisse;});
-  if(Object.keys(byD).length){sec('PAR DEVISE');for(const[d,m]of Object.entries(byD))ln('  '+d,(d==='CFP'||d==='TPE')?m.toLocaleString('fr-FR')+' CFP':m+' '+d);y+=4;}
+  const byD={};(h.ventes||[]).forEach(v=>{byD[v.devise]=(byD[v.devise]||0)+montantRecu(v);});
+  if(Object.keys(byD).length){sec('PAR DEVISE');for(const[d,m]of Object.entries(byD))ln('  '+d,fmtParDevise(d,m));y+=4;}
   if(h.heuresTotal){sec('HEURES');ln('Sessions',h.nbSessions||0);ln('Total',h.heuresTotal);y+=4;}
   sec('VENTES');
   for(const v of (h.ventes||[])){if(y>265){doc.addPage();y=15;}const hr=new Date(v.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    doc.setFont(undefined,'bold');doc.text(`${hr} — ${v.montantEncaisse.toLocaleString('fr-FR')} CFP (${v.devise})`,15,y);y+=4;doc.setFont(undefined,'normal');
+    doc.setFont(undefined,'bold');doc.text(`${hr} — ${v.montantEncaisse.toLocaleString('fr-FR')} CFP (${v.montantDevise!=null?v.montantDevise+' ':''}${v.devise})`,15,y);y+=4;doc.setFont(undefined,'normal');
     for(const a of (v.articles||[])){if(y>275){doc.addPage();y=15;}doc.text(`  • ${a.nom} x${a.qty} = ${a.total.toLocaleString('fr-FR')} CFP`,18,y);y+=4;}
     if(v.remisePanier>0){doc.setTextColor(0,150,80);doc.text(`  Remise panier: -${v.remisePanier.toLocaleString('fr-FR')} CFP`,18,y);y+=4;doc.setTextColor(50,50,50);}
     if(v.remiseEncaissement>0){doc.setTextColor(0,150,80);doc.text(`  Remise encaissement: -${v.remiseEncaissement.toLocaleString('fr-FR')} CFP`,18,y);y+=4;doc.setTextColor(50,50,50);}y+=2;
@@ -1057,20 +1067,20 @@ function genererPDF(){
   doc.setTextColor(201,168,76);doc.setFontSize(20);doc.text('Debajah Création',15,16);
   doc.setFontSize(10);doc.setTextColor(160,140,200);doc.text('Rapport de clôture journalière',15,24);doc.text(dateStr.charAt(0).toUpperCase()+dateStr.slice(1),15,31);
   if(vendor){doc.setTextColor(201,168,76);doc.text('Vendeur : '+vendor,15,38);}
-  doc.setFontSize(8);doc.setTextColor(120,100,160);doc.text('v1.1 — By Diego OLAYA & Claude 4.6',195,38,{align:'right'});
+  doc.setFontSize(8);doc.setTextColor(120,100,160);doc.text('v'+APP_VERSION+' — By Diego OLAYA & Claude 4.6',195,38,{align:'right'});
   let y=50;
   const sec=(t)=>{if(y>260){doc.addPage();y=15;}doc.setFontSize(12);doc.setTextColor(100,60,180);doc.text(t,15,y);y+=4;doc.setDrawColor(201,168,76);doc.line(15,y,195,y);y+=6;doc.setFontSize(9);doc.setTextColor(50,50,50);};
   const ln=(l,v,col=null)=>{if(y>275){doc.addPage();y=15;}if(col)doc.setTextColor(...col);else doc.setTextColor(50,50,50);doc.text(String(l),15,y);doc.text(String(v),195,y,{align:'right'});y+=5;};
   sec('RÉSUMÉ');ln('Ventes',ventes.length);ln('Total encaissé',tenc.toLocaleString('fr-FR')+' CFP');
   if(trem>0)ln('Remises accordées','-'+trem.toLocaleString('fr-FR')+' CFP',[0,150,80]);
   y+=4;
-  const byD={};ventes.forEach(v=>{byD[v.devise]=(byD[v.devise]||0)+v.montantEncaisse;});
-  sec('PAR DEVISE');for(const[d,m]of Object.entries(byD))ln('  '+d,(d==='CFP'||d==='TPE')?m.toLocaleString('fr-FR')+' CFP':m+' '+d);y+=4;
+  const byD={};ventes.forEach(v=>{byD[v.devise]=(byD[v.devise]||0)+montantRecu(v);});
+  sec('PAR DEVISE');for(const[d,m]of Object.entries(byD))ln('  '+d,fmtParDevise(d,m));y+=4;
   const tm=sessions.reduce((a,s)=>a+s.dureeMin,0);
   if(sessions.length){sec('HEURES');ln('Sessions',sessions.length);ln('Total',`${Math.floor(tm/60)}h${String(tm%60).padStart(2,'0')}`);ln('Montant dû',Math.round(tm/60*settings.tauxH).toLocaleString('fr-FR')+' CFP');y+=4;}
   sec('VENTES');
   for(const v of ventes){if(y>265){doc.addPage();y=15;}const hr=new Date(v.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    doc.setFont(undefined,'bold');doc.text(`${hr} — ${v.montantEncaisse.toLocaleString('fr-FR')} CFP (${v.devise})`,15,y);y+=4;doc.setFont(undefined,'normal');
+    doc.setFont(undefined,'bold');doc.text(`${hr} — ${v.montantEncaisse.toLocaleString('fr-FR')} CFP (${v.montantDevise!=null?v.montantDevise+' ':''}${v.devise})`,15,y);y+=4;doc.setFont(undefined,'normal');
     for(const a of v.articles){if(y>275){doc.addPage();y=15;}doc.text(`  • ${a.nom} x${a.qty} = ${a.total.toLocaleString('fr-FR')} CFP`,18,y);y+=4;}
     if(v.remisePanier>0){doc.setTextColor(0,150,80);doc.text(`  Remise panier: -${v.remisePanier.toLocaleString('fr-FR')} CFP`,18,y);y+=4;doc.setTextColor(50,50,50);}
     if(v.remiseEncaissement>0){doc.setTextColor(0,150,80);doc.text(`  Remise encaissement: -${v.remiseEncaissement.toLocaleString('fr-FR')} CFP`,18,y);y+=4;doc.setTextColor(50,50,50);}y+=2;
@@ -1080,15 +1090,39 @@ function genererPDF(){
   for(const[cat,arts]of Object.entries(byCat)){if(y>270){doc.addPage();y=15;}doc.setFont(undefined,'bold');doc.text(cat.toUpperCase(),15,y);y+=4;doc.setFont(undefined,'normal');
     for(const a of arts){if(y>275){doc.addPage();y=15;}a.quantite===0?doc.setTextColor(200,60,60):a.quantite<=2?doc.setTextColor(200,130,0):doc.setTextColor(50,50,50);doc.text(`  ${a.nom}: ${a.quantite}`,15,y);y+=4;}y+=2;}
   const pg=doc.internal.getNumberOfPages();for(let i=1;i<=pg;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(160,160,160);doc.text(`Debajah Création${vendor?' — '+vendor:''} · ${new Date().toLocaleString('fr-FR')} · Page ${i}/${pg}`,105,292,{align:'center'});}
-  doc.save(`cloture_${vendor}_${new Date().toISOString().split('T')[0]}.pdf`);showToast('📄 PDF généré');
+  doc.save(`cloture_${vendor}_${dateLocale()}.pdf`);showToast('📄 PDF généré');
 }
 
 // PARAMS
 function savePrenom(){const v=document.getElementById('paramPrenom').value.trim();if(!v){showToast('⚠ Requis');return;}settings.prenom=v;saveDB();updateHeaderVendor();showToast('✓ Enregistré');}
 function saveTauxH(){const v=parseInt(document.getElementById('paramTauxH').value);if(!v||v<=0){showToast('⚠ Invalide');return;}settings.tauxH=v;saveDB();renderSessions();showToast('✓ Taux mis à jour');}
 function saveGoogleUrl(){const v=document.getElementById('paramGoogleUrl').value.trim();settings.googleUrl=v;saveDB();document.getElementById('syncStatus').textContent=v?'✓ URL configurée':'Non configuré';if(v){showToast('✓ Connecté');loadFromGoogle();}}
-function loadParamsUI(){document.getElementById('paramPrenom').value=settings.prenom||'';document.getElementById('paramTauxH').value=settings.tauxH||1500;document.getElementById('paramGoogleUrl').value=settings.googleUrl||'';document.getElementById('syncStatus').textContent=settings.googleUrl?(settings.lastSync?'✓ Dernière sync: '+new Date(settings.lastSync).toLocaleString('fr-FR'):'⚠ Non encore synchronisé'):'Non configuré';}
-function exportStockJSON(){const blob=new Blob([JSON.stringify({articles,ts:new Date().toISOString()},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`stock_debajah_${new Date().toISOString().split('T')[0]}.json`;a.click();showToast('📤 Exporté');}
+function loadParamsUI(){document.getElementById('btnPartagerExport').style.display=peutPartagerFichier(new File(['{}'],'test.json',{type:'application/json'}))?'':'none';document.getElementById('paramPrenom').value=settings.prenom||'';document.getElementById('paramTauxH').value=settings.tauxH||1500;document.getElementById('paramGoogleUrl').value=settings.googleUrl||'';document.getElementById('syncStatus').textContent=settings.googleUrl?(settings.lastSync?'✓ Dernière sync: '+new Date(settings.lastSync).toLocaleString('fr-FR'):'⚠ Non encore synchronisé'):'Non configuré';}
+// Export de toutes les données (base de la migration v2 : le nouveau domaine ne peut pas lire ce localStorage)
+function buildExportComplet(){
+  const{pin,_tmp,...settingsSansPin}=settings;
+  return{app:'mon-stand',type:'export-complet',version:APP_VERSION,exportedAt:new Date().toISOString(),timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone,
+    articles,ventes,sessions,sessionActive,historique,rates,settings:settingsSansPin};
+}
+function fichierExportComplet(){
+  const json=JSON.stringify(buildExportComplet(),null,2);
+  return new File([json],`mon-stand_export-complet_${dateLocale()}.json`,{type:'application/json'});
+}
+function peutPartagerFichier(f){try{return !!(navigator.canShare&&navigator.canShare({files:[f]}));}catch(e){return false;}}
+async function exportComplet(partager=false){
+  const f=fichierExportComplet();
+  const resume=`${articles.length} articles · ${ventes.length} ventes · ${historique.length} clôtures`;
+  if(partager&&peutPartagerFichier(f)){
+    try{await navigator.share({files:[f],title:'Export Mon Stand'});showToast('📤 Partagé — '+resume);}
+    catch(e){if(e.name!=='AbortError')showToast('❌ Partage impossible');}
+    return;
+  }
+  const url=URL.createObjectURL(f),a=document.createElement('a');
+  a.href=url;a.download=f.name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
+  showToast('📦 Exporté — '+resume);
+}
+function exportStockJSON(){const blob=new Blob([JSON.stringify({articles,ts:new Date().toISOString()},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`stock_debajah_${dateLocale()}.json`;a.click();showToast('📤 Exporté');}
 function importStockJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.articles&&Array.isArray(d.articles)){if(confirm(`Importer ${d.articles.length} articles ?`)){articles=d.articles;saveDB();filterArticles();showToast('✓ Importé');}}else showToast('❌ Fichier invalide');}catch(err){showToast('❌ Erreur lecture');}};r.readAsText(f);e.target.value='';}
 
 // UI
