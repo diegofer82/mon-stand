@@ -14,7 +14,7 @@
 | Frontend | **React + TypeScript** (Vite) |
 | Varios teléfonos a la vez | **No por ahora**, pero el modelo de datos se diseña multi-dispositivo desde el día 1; el tiempo real queda en Backlog |
 | Diseño | Rediseño completo con **/design** (Design System + canvas de pantallas en claude.ai) |
-| Plan Cloudflare | Cuenta de pago — **por confirmar si es Workers Paid (5 $/mes)** o un plan de dominio (Pro/Business). Este plan asume Workers Paid (ver §3) |
+| Plan Cloudflare | **Workers Paid** (5 $/mes) + **Zero Trust Teams Free** (Access hasta 50 usuarios), ambos activos — ver §3 |
 
 ---
 
@@ -143,7 +143,7 @@ mon-stand/
 
 ---
 
-## 3. Qué aprovechamos del plan de pago (Workers Paid)
+## 3. Qué aprovechamos de la suscripción (Workers Paid + Zero Trust Free)
 
 | | Gratis | Workers Paid | Uso en el proyecto |
 |---|---|---|---|
@@ -158,7 +158,7 @@ mon-stand/
 | **Browser Run** | limitado | 10 h/mes + 10 navegadores | PDF de cierre generado en servidor desde HTML |
 | Durable Objects | con límites diarios | 1 M peticiones/mes incluidas | Tiempo real multi-teléfono (Backlog) |
 
-Coste estimado para el volumen de un stand: **los 5 $/mes de Workers Paid**; R2 dentro de su capa gratuita (10 GB).
+Coste estimado para el volumen de un stand: **los 5 $/mes de Workers Paid** que ya se pagan; R2 dentro de su capa gratuita (10 GB); Access sin coste con Zero Trust Teams Free (hasta 50 usuarios).
 
 Notas:
 - Las funciones de **dominio** (WAF, reglas personalizadas, Polish) **no aplican a `*.workers.dev`**: se aprovecharán si más adelante se usa un dominio propio.
@@ -287,12 +287,11 @@ Estimaciones orientativas en días de trabajo efectivo.
 | iOS borra el almacenamiento de webs no usadas en 7 días (si no están en la pantalla de inicio) | Instalar la PWA en la pantalla de inicio + D1 como fuente de verdad |
 | `localStorage` no se transfiere entre dominios | Export JSON en la Fase 0 + importador en la Fase 6 |
 | Errores de fecha por zona horaria | `Pacific/Noumea` explícito + tests |
-| Plan Cloudflare exacto sin confirmar | Verificar en Billing → Subscriptions antes de la Fase 2 |
 
 ---
 
 ## 8. Pendiente de confirmar
 
-- [ ] Tipo exacto de suscripción Cloudflare (Workers Paid / Pro / Business).
+- [x] Suscripción Cloudflare: Workers Paid + Zero Trust Teams Free (confirmado 2026-09-25).
 - [ ] ¿Hay un dominio en la cuenta Cloudflare para el envío de email?
 - [ ] ¿Hay datos en Google Sheets que importar?
