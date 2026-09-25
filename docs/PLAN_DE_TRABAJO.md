@@ -145,24 +145,31 @@ mon-stand/
 
 ## 3. Qué aprovechamos de la suscripción (Workers Paid + Zero Trust Free)
 
-| | Gratis | Workers Paid | Uso en el proyecto |
+Cifras verificadas en la documentación oficial de Cloudflare el 2026-09-25.
+
+| | Workers Free | Workers Paid | Uso en el proyecto |
 |---|---|---|---|
-| CPU por petición | 10 ms | hasta 5 min | Import de datos v1, exportes, sync de lotes grandes |
-| Peticiones | 100 000/día | 10 M/mes incluidas | Margen de sobra |
+| CPU por petición HTTP | 10 ms | hasta 5 min (30 s por defecto) | Import de datos v1, exportes, sync de lotes grandes |
+| CPU por Cron Trigger | 10 ms | 30 s (intervalo < 1 h) / 15 min (≥ 1 h) | Cron de tasas y archivo mensual D1 → R2 |
+| Cron Triggers por cuenta | 5 | 250 | Sin restricción práctica |
+| Peticiones | 100 000/día | 10 M/mes incluidas (+0,30 $/M) | Margen de sobra; las peticiones a los archivos estáticos son gratis |
 | Tamaño por BD D1 | 500 MB | 10 GB | Años de historial |
 | D1 lecturas / escrituras | 5 M/día / 100 000/día | 25 000 M / 50 M al mes | Panel del propietario sin preocuparse |
+| Consultas D1 por petición | 50 | 1 000 | Sync de lotes del outbox en una sola petición |
 | **D1 Time Travel** | 7 días | **30 días** | Restaurar la BD a cualquier minuto del último mes |
-| Tamaño del Worker | 3 MB | 10 MB | Margen para dependencias |
-| Subpeticiones | 50 | 10 000 | Cron de tasas y notificaciones |
-| Workers Logs | 3 días | 7 días | Revisar el lunes un problema del sábado |
-| **Browser Run** | limitado | 10 h/mes + 10 navegadores | PDF de cierre generado en servidor desde HTML |
-| Durable Objects | con límites diarios | 1 M peticiones/mes incluidas | Tiempo real multi-teléfono (Backlog) |
+| Workers Logs | 200 000 eventos/día, 3 días | 20 M/mes, 7 días | Revisar el lunes un problema del sábado |
+| **Browser Run** | 10 min/día, 3 navegadores | 10 h/mes + 10 navegadores | PDF de cierre generado en servidor desde HTML |
+| Durable Objects | 100 000 peticiones/día | 1 M peticiones/mes incluidas | Tiempo real multi-teléfono (Backlog) |
+| Email Sending | no disponible | 3 000 emails/mes incluidos | PDF de cierre por email (requiere dominio, ver nota) |
 
 Coste estimado para el volumen de un stand: **los 5 $/mes de Workers Paid** que ya se pagan; R2 dentro de su capa gratuita (10 GB); Access sin coste con Zero Trust Teams Free (hasta 50 usuarios).
 
 Notas:
+- **Cloudflare Access sobre `workers.dev`**: Access puede proteger la URL `workers.dev` de producción, las URLs de preview, o ambas. Se usará para `/admin` y las previews; las vendedoras entran con PIN.
 - Las funciones de **dominio** (WAF, reglas personalizadas, Polish) **no aplican a `*.workers.dev`**: se aprovecharán si más adelante se usa un dominio propio.
-- El **envío de email** (binding `send_email`) necesita un dominio con Email Routing en la cuenta (la app puede seguir en `workers.dev`). Sin dominio: el PDF queda en R2 y se descarga desde `/admin`.
+- El **envío de email** exige "onboardear" un dominio de la cuenta Cloudflare en Email Service (registros DKIM/DMARC); la app puede seguir en `workers.dev`. Los envíos a direcciones de destino verificadas son gratuitos y no cuentan en la cuota. Sin dominio: el PDF queda en R2 y se descarga desde `/admin`.
+
+Fuentes: [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/) · [Workers limits](https://developers.cloudflare.com/workers/platform/limits/) · [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/) · [D1 limits](https://developers.cloudflare.com/d1/platform/limits/) · [Browser Run pricing](https://developers.cloudflare.com/browser-run/pricing/) · [Durable Objects pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/) · [Email Service pricing](https://developers.cloudflare.com/email-service/platform/pricing/) · [workers.dev + Access](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
 
 ---
 
