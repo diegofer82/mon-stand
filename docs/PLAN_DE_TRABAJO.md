@@ -228,7 +228,8 @@ Estimaciones orientativas en días de trabajo efectivo.
 
 ### Fase 2 — Fundaciones Cloudflare (≈ 2 días)
 - [ ] Proyecto `app/`: Vite + React + TS + `@cloudflare/vite-plugin` + Hono; ESLint, Prettier, Vitest
-- [ ] `wrangler.jsonc`: D1 `mon-stand-db`, KV `TAUX`, R2 `mon-stand-files`, Browser Run, cron
+- [ ] **Activar R2** en el dashboard de Cloudflare (hoy desactivado en la cuenta: la API responde "Please enable R2")
+- [ ] `wrangler.jsonc` con entornos producción y preview, siguiendo la convención de la cuenta (`controlcash` / `controlcash-preview`): Workers `mon-stand` y `mon-stand-preview`; D1 `mon-stand-production` y `mon-stand-preview`; KV `mon-stand-taux`; R2 `mon-stand-files`; Browser Run; cron
 - [ ] Migración D1 inicial (esquema §2) con Drizzle
 - [ ] Workers Builds conectado al repo (directorio raíz `app/`): deploy en push a `main`, URL de preview por PR
 - [ ] Publicación en `mon-stand.<cuenta>.workers.dev`; Cloudflare Access sobre las URLs de preview y `/admin`
@@ -300,5 +301,7 @@ Estimaciones orientativas en días de trabajo efectivo.
 ## 8. Pendiente de confirmar
 
 - [x] Suscripción Cloudflare: Workers Paid + Zero Trust Teams Free (confirmado 2026-09-25).
+- [x] Conector "Cloudflare Developer Platform" conectado y verificado (lectura de Workers, D1, KV).
+- [ ] Activar R2 en el dashboard (necesario para PDFs y archivo).
 - [ ] ¿Hay un dominio en la cuenta Cloudflare para el envío de email?
 - [ ] ¿Hay datos en Google Sheets que importar?
