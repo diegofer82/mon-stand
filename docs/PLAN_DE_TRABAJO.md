@@ -215,6 +215,40 @@ Fuentes: [Workers pricing](https://developers.cloudflare.com/workers/platform/pr
 
 Navegación: 4 pestañas (Caja · Stock · Horas · Cierre); Ajustes en el menú del avatar.
 
+### Primera versión (2026-09-26)
+
+Artefactos privados en claude.ai (para la vendedora hay que compartirlos desde el menú *Share*):
+
+- **Design System «Debajah Création»**: <https://claude.ai/artifact/EL9M2DpdxJkeKziaHprhFp> — tokens claro «Plein soleil» / oscuro «Soir», 31 componentes React (`window.Debajah`), iconos Lucide, fuentes.
+- **Canvas «Mon Stand v2»**: <https://claude.ai/artifact/TgJaV59CH23RrbqaJNRpbE> — 21 pantallas: Vendre (acceso, caja, carrito, cobro en CFP / AUD / mixto, otro importe, venta registrada con «Annuler»), Gérer (stock, ficha de artículo, horas, cierre, conteo de caja, historial, ajustes), las mismas en oscuro, caja en tablet horizontal y panel `/admin`. La caja es un prototipo que se puede tocar (añadir, carrito, cobrar, deshacer).
+
+Decisiones tomadas en el diseño:
+
+| Tema | Decisión |
+|---|---|
+| Tipografía UI | **Atkinson Hyperlegible Next** en lugar de DM Sans: DM Sans no tiene cifras tabulares (`tnum`) y el plan las exige para los importes; Atkinson distingue 0/O y 1/l/I, pensada para leer con reflejos. Playfair Display se queda para marca y títulos |
+| Color | Violeta = marca y selección; «night» (violeta profundo) solo para la barra de caja, el acceso y el PDF; oro = la acción principal (una por vista) y el dinero; estados siempre con palabra o icono |
+| Importes | `formatNumber` con espacio fino: `toLocaleString('fr-FR')` usa U+202F, que no existe en ninguna de las dos fuentes |
+| Cobro | Botones de moneda con el importe ya calculado en cada divisa (regla v1.5), billete sugerido + «Compte juste» + «Autre montant»; si el importe recibido no alcanza, «Payer le reste autrement» abre el pago mixto |
+| Marca | No hay logotipo: nombre en Playfair + hoja Lucide (heredera del 🌿) |
+
+Impacto en el modelo de datos (a confirmar con la validación):
+
+- `articles.emoji` (opcional): la cuadrícula de la caja necesita distinguir los artículos de una misma categoría hasta que haya fotos.
+- `journees.fond_caisse_cfp`: el conteo de caja compara con «fondo de caja + efectivo neto»; hay que saber con cuánto cambio empieza el día.
+- Monnaie de un pago en divisa: registrar si se devolvió en la divisa o en CFP (cambia el esperado del conteo por moneda).
+- Artículos con precio 0 (Bourgoir, Boîte déco) no aparecen en la caja; el stock los marca «Prix à fixer».
+
+Preguntas para la vendedora (también en una nota del canvas):
+
+1. La monnaie de un pago en AUD: ¿se devuelve en AUD o en CFP?
+2. ¿Los emoji de los artículos le sirven, o mejor fotos?
+3. ¿Bastan los billetes propuestos (compte juste, billete siguiente, otro importe)?
+4. ¿Con cuánto fondo de caja en CFP empieza el día?
+5. Pago mixto: ¿50 AUD cuentan al tipo del día (3 689 CFP)?
+6. ¿Es práctico mantener pulsado para Commencer / Terminer?
+7. ¿El modo claro se lee bien a pleno sol?
+
 ---
 
 ## 5. Fases
@@ -246,12 +280,14 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 **Estado**: mergeada en `main` (PR #3) el 2026-09-26. Falta probarla en el teléfono de la vendedora antes del próximo mercado (~2026-10-03).
 
 ### Fase 1 — Diseño con /design (≈ 2–3 días)
-- [ ] Design System "Debajah Création"
-- [ ] Canvas con todas las pantallas (§4), claro/oscuro, móvil + tablet
-- [ ] Revisión en el teléfono con la vendedora (enlace compartido) e iteración
+- [x] Design System "Debajah Création" (primera versión, §4)
+- [x] Canvas con todas las pantallas (§4), claro/oscuro, móvil + tablet + `/admin`
+- [ ] Revisión en el teléfono con la vendedora (enlace compartido) e iteración — preguntas en §4
 - [ ] Tokens finales listos para Tailwind (`@theme`)
 
 **Hecho cuando**: pantallas validadas por el propietario y la vendedora.
+
+**Estado**: primera versión publicada el 2026-09-26 (enlaces en §4). Falta compartirla con la vendedora, recoger sus respuestas e iterar.
 
 ### Fase 2 — Fundaciones Cloudflare (≈ 2 días)
 - [ ] Proyecto `app/`: Vite + React + TS + `@cloudflare/vite-plugin` + Hono; ESLint, Prettier, Vitest
