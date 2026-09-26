@@ -231,6 +231,7 @@ Decisiones tomadas en el diseño:
 | Importes | `formatNumber` con espacio fino: `toLocaleString('fr-FR')` usa U+202F, que no existe en ninguna de las dos fuentes |
 | Cobro | Botones de moneda con el importe ya calculado en cada divisa (regla v1.5), billete sugerido + «Compte juste» + «Autre montant»; si el importe recibido no alcanza, «Payer le reste autrement» abre el pago mixto |
 | Marca | No hay logotipo: nombre en Playfair + hoja Lucide (heredera del 🌿) |
+| Orden de la caja («Tout») | **Los más vendidos primero**: unidades vendidas en los últimos 30 días (`vente_lignes`), empate por nombre; agotados al final. Se calcula al abrir la jornada y no cambia durante el día, para que las fichas no se muevan bajo el dedo. Las categorías conservan el orden del stock |
 
 Impacto en el modelo de datos (a confirmar con la validación):
 
@@ -239,7 +240,7 @@ Impacto en el modelo de datos (a confirmar con la validación):
 - Monnaie de un pago en divisa: registrar si se devolvió en la divisa o en CFP (cambia el esperado del conteo por moneda).
 - Artículos con precio 0 (Bourgoir, Boîte déco) no aparecen en la caja; el stock los marca «Prix à fixer».
 
-Preguntas para la vendedora (también en una nota del canvas):
+Preguntas para la vendedora (también en una nota del canvas; no bloquean el diseño, hay que responderlas antes de la Fase 3):
 
 1. La monnaie de un pago en AUD: ¿se devuelve en AUD o en CFP?
 2. ¿Los emoji de los artículos le sirven, o mejor fotos?
@@ -282,12 +283,12 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 ### Fase 1 — Diseño con /design (≈ 2–3 días)
 - [x] Design System "Debajah Création" (primera versión, §4)
 - [x] Canvas con todas las pantallas (§4), claro/oscuro, móvil + tablet + `/admin`
-- [ ] Revisión en el teléfono con la vendedora (enlace compartido) e iteración — preguntas en §4
+- [x] Revisión e iteración — validado el 2026-09-26 con un cambio: «Tout» ordenado por ventas (§4)
 - [ ] Tokens finales listos para Tailwind (`@theme`)
 
 **Hecho cuando**: pantallas validadas por el propietario y la vendedora.
 
-**Estado**: primera versión publicada el 2026-09-26 (enlaces en §4). Falta compartirla con la vendedora, recoger sus respuestas e iterar.
+**Estado**: pantallas validadas el 2026-09-26 (enlaces en §4). Quedan los tokens para Tailwind y las respuestas de la vendedora a las preguntas de §4.
 
 ### Fase 2 — Fundaciones Cloudflare (≈ 2 días)
 - [ ] Proyecto `app/`: Vite + React + TS + `@cloudflare/vite-plugin` + Hono; ESLint, Prettier, Vitest
