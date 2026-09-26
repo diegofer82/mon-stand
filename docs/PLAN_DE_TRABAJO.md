@@ -44,6 +44,15 @@
 | 13 | Cobro en divisa: `montantEncaisse` guardado en la divisa y sumado como CFP; `remiseEncaissement` = CFP − divisa | `validerVente` | «Total encaissé» falso y remises ficticias (detectado en la Fase 0) |
 | 14 | Precio en divisa = total CFP convertido y redondeado **hacia arriba** al múltiplo de 5 | `arrondir5`, `convertCFP` | La app sugería 30 AUD por un collar de 2 000 CFP (la vendedora cobra 25) y 55 AUD por dos (cobra 50); sin precio fijo por divisa |
 
+### Google Sheets (revisado el 2026-09-26 con el `.xlsx` de la hoja y el script v1.2)
+
+- **Nada que importar**: las ventas (21), sesiones (5) y el stock de la hoja están todos en el export del teléfono, que tiene además el 18/04 y las sesiones de abril.
+- «Ventes»: cada sync vuelve a añadir todas las ventas del día (`appendRows`) → 62 filas para 21 ventas. Sin fila de cabecera.
+- Hoja en configuración regional US: las fechas `JJ/MM/AAAA` con día ≤ 12 quedan invertidas (07/05 → 5 de julio); las demás quedan como texto.
+- «Heures»: 6 columnas, sin cabecera, 77 filas para 5 sesiones → no corresponde al script v1.2 (que borra la hoja y escribe 8 columnas con `ID` y `Payée`): **el despliegue activo es una versión anterior**.
+- Script v1.2 (no desplegado): `Payée` se escribe `OUI`/`NON` pero se lee como `TRUE`/`1` → al cargar, todas las sesiones pasarían a «no pagada»; Sheets convierte `Arrivée`/`Départ` en horas → `debut`/`fin` inválidos. **No desplegarlo tal cual.**
+- `loadAll` devuelve el stock sin precios en divisa: la v1.5 conserva los `prixDevises` del teléfono.
+
 ---
 
 ## 2. Arquitectura objetivo
@@ -285,7 +294,7 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
   - Ventas v1.4: `montantEncaisse` en CFP + `montantDevise`/`tauxCFP` en divisa. Ventas v1.3 (sin `montantDevise`): `montantEncaisse` está en la divisa de `devise` y no guarda la tasa
   - Cierres v1.3 sin `id` (el export les asigna `clo_legacy_N`) y con fecha UTC si se cerraron antes de las 11:00
   - Artículos v1.5: `prixDevises` (solo precios manuales) → `article_prix`. Ventas v1.5 en divisa: `totalDevise` → `vente_paiements.total_devise`
-- [ ] Si hay datos en Google Sheets: exportarlos una vez e importarlos
+- [x] ~~Si hay datos en Google Sheets: exportarlos una vez e importarlos~~ — no hace falta, todo está en el export del teléfono (§1)
 - [ ] Un día de mercado con v1 y v2 en paralelo; comparar cierres
 - [ ] Corte: `index.html` raíz → página de redirección a `workers.dev`; v1 archivada en `legacy/`
 - [ ] Desactivar el despliegue de Apps Script; actualizar el README
@@ -324,4 +333,4 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 - [x] Conector "Cloudflare Developer Platform" conectado y verificado (lectura de Workers, D1, KV).
 - [x] R2 activado y verificado.
 - [ ] ¿Hay un dominio en la cuenta Cloudflare para el envío de email?
-- [ ] ¿Hay datos en Google Sheets que importar?
+- [x] ¿Hay datos en Google Sheets que importar? **No** (verificado el 2026-09-26, ver §1).
