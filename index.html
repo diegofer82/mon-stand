@@ -108,6 +108,14 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
 .devise-name{font-size:12px;font-weight:600}.devise-rate{font-size:10px;color:var(--text3);margin-top:1px}
 .devise-amount-input{margin-top:7px;display:none}.devise-card.selected .devise-amount-input{display:block}
 .devise-monnaie{font-size:11px;color:var(--green);margin-top:3px}
+.prix-devises{background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px}
+.prix-devise-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.prix-devise-row .dev{width:36px;font-size:12px;font-weight:600;color:var(--text2)}
+.prix-devise-row input{flex:1;min-width:0;padding:8px 11px}
+.prix-mode{min-width:78px;padding:6px 8px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text3);font-family:'DM Sans',sans-serif;font-size:11px}
+.prix-mode.manuel{color:var(--accent);border-color:var(--accent);background:rgba(201,168,76,.12);cursor:pointer}
+.prix-devises-aide{font-size:10px;color:var(--text3);line-height:1.5}
+.article-prix .prix-manuel{color:var(--accent2);font-weight:600}
 .cloture-stat{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .cloture-stat:last-child{border-bottom:none}.cloture-stat-label{font-size:12px;color:var(--text2)}
 .cloture-stat-value{font-size:13px;font-weight:600;color:var(--accent2)}
@@ -285,7 +293,7 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
     </div>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importStockJSON(event)">
   </div>
-  <div class="app-footer">🌿 Debajah Création — Mon Stand v1.4<br>Développé avec ❤️ pour le marché artisanal<br>By Diego OLAYA &amp; Claude 4.6</div>
+  <div class="app-footer">🌿 Debajah Création — Mon Stand v1.5<br>Développé avec ❤️ pour le marché artisanal<br>By Diego OLAYA &amp; Claude 4.6</div>
 </div>
 
 <!-- MODALS -->
@@ -307,8 +315,8 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
     <div class="modal-handle"></div><div class="modal-title" id="modalArticleTitle">Modifier</div>
     <input type="hidden" id="editArticleId">
     <div class="input-group"><label class="input-label">Nom</label><input type="text" id="editNom"></div>
-    <div class="input-group"><label class="input-label">Prix CFP</label><input type="number" id="editPrix" oninput="previewConversions()"></div>
-    <div id="previewPrix" style="font-size:11px;color:var(--text3);margin:-7px 0 9px;padding:0 3px"></div>
+    <div class="input-group"><label class="input-label">Prix CFP</label><input type="number" id="editPrix" oninput="majPrixDevises('edit')"></div>
+    <div class="input-group"><label class="input-label">Prix de vente en devise</label><div class="prix-devises" id="editPrixDevises"></div></div>
     <div class="input-group"><label class="input-label">Quantité</label><input type="number" id="editQty" min="0"></div>
     <div class="input-group"><label class="input-label">Catégorie</label>
       <select id="editCat"><option value="bijoux">💍 Bijoux</option><option value="deco">🪴 Déco</option><option value="jeux">♟️ Jeux</option><option value="papeterie">🖊️ Papeterie</option></select>
@@ -326,7 +334,8 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
   <div class="modal">
     <div class="modal-handle"></div><div class="modal-title">➕ Nouvel article</div>
     <div class="input-group"><label class="input-label">Nom</label><input type="text" id="newNom"></div>
-    <div class="input-group"><label class="input-label">Prix CFP</label><input type="number" id="newPrix"></div>
+    <div class="input-group"><label class="input-label">Prix CFP</label><input type="number" id="newPrix" oninput="majPrixDevises('new')"></div>
+    <div class="input-group"><label class="input-label">Prix de vente en devise</label><div class="prix-devises" id="newPrixDevises"></div></div>
     <div class="input-group"><label class="input-label">Quantité</label><input type="number" id="newQty" value="1" min="0"></div>
     <div class="input-group"><label class="input-label">Catégorie</label>
       <select id="newCat"><option value="bijoux">💍 Bijoux</option><option value="deco">🪴 Déco</option><option value="jeux">♟️ Jeux</option><option value="papeterie">🖊️ Papeterie</option></select>
@@ -414,7 +423,7 @@ input:focus,select:focus{border-color:var(--accent)}select option{background:var
 </div>
 
 <script>
-const APP_VERSION='1.4';
+const APP_VERSION='1.5';
 const DEVISES=['AUD','USD','EUR','NZD','JPY'];
 // Le franc CFP est arrimé à l'euro : 1 € = 119,332 CFP (parité fixe)
 const EUR_CFP=119.332;
@@ -557,7 +566,7 @@ async function fetchRates(){
 
 function updateRatesUI(){
   for(const d of DEVISES){const el=document.getElementById('rate'+d);if(el)el.textContent=rates[d]?`1${d}=${fmtTaux(rates[d])}`:'—';}
-  renderRateEditRows();renderDeviseGrid();
+  renderRateEditRows();renderDeviseGrid();filterArticles();if(panier.length)renderPanierTotal();
 }
 function fmtTaux(v){return v.toLocaleString('fr-FR',{maximumFractionDigits:3});}
 function renderRateEditRows(){
@@ -570,9 +579,20 @@ function saveRates(){
   saveDB();updateRatesUI();closeModal('modalTaux');showToast('✓ Taux enregistrés');
 }
 
-function arrondir5(v){if(v<=0)return 0;const r=v%5;return r===0?v:v+(5-r);}
-function convertCFP(cfp,d){if(!rates[d]||rates[d]===0||cfp===0)return null;return arrondir5(Math.ceil(cfp/rates[d]));}
-function formatPrixDevises(cfp){return DEVISES.map(d=>{const v=convertCFP(cfp,d);return v?`${d} ${v}`:null;}).filter(Boolean).join(' · ');}
+// Prix en devise arrondi au 5 le plus proche (25, 30, 35…) ; au-delà de 1 000 (ex. JPY) à la centaine la plus proche
+function arrondirDevise(v){if(!(v>0))return 0;const pas=v>1000?100:5;return Math.max(pas,Math.round(v/pas)*pas);}
+function convertCFP(cfp,d){if(!rates[d]||!(cfp>0))return null;return arrondirDevise(cfp/rates[d]);}
+// Prix de vente d'un article en devise : manuel s'il est fixé dans le stock, sinon calculé depuis le prix CFP
+function prixManuel(a,d){const v=a?.prixDevises?.[d];return v>0?v:null;}
+function prixDevise(a,d){return prixManuel(a,d)??convertCFP(a.prixCFP,d);}
+function normPrixDevises(v){
+  if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){return null;}}
+  if(!v||typeof v!=='object')return null;
+  const r={};for(const d of DEVISES){const x=parseFloat(v[d]);if(x>0)r[d]=Math.round(x*100)/100;}
+  return Object.keys(r).length?r:null;
+}
+function fmtMontant(v){return v.toLocaleString('fr-FR',{maximumFractionDigits:2});}
+function formatPrixArticle(a){return DEVISES.map(d=>{const v=prixDevise(a,d);return v?(prixManuel(a,d)?`<span class="prix-manuel">${d} ${fmtMontant(v)}</span>`:`${d} ${fmtMontant(v)}`):null;}).filter(Boolean).join(' · ');}
 
 // HORLOGE
 function updateClock(){
@@ -774,7 +794,7 @@ function renderArticlesList(list){
   else c.innerHTML=list.map(a=>`<div class="article-card">
     <div style="flex:1;min-width:0">
       <div class="article-nom">${a.nom}</div>
-      <div class="article-prix">${a.prixCFP.toLocaleString('fr-FR')} CFP <span>${formatPrixDevises(a.prixCFP)?'· '+formatPrixDevises(a.prixCFP):''}</span></div>
+      <div class="article-prix">${a.prixCFP.toLocaleString('fr-FR')} CFP <span>${formatPrixArticle(a)?'· '+formatPrixArticle(a):''}</span></div>
       ${a.promo2eme?`<div class="article-promo">🏷 -${a.promo2eme}% 2ème unité</div>`:''}
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:7px">
@@ -789,7 +809,7 @@ function renderArticlesList(list){
       </div>
     </div>
   </div>`).join('');
-  c.innerHTML+=`<button class="btn btn-outline" onclick="openModal('modalNouvelArticle')" style="margin-top:7px">+ Nouvel article</button>`;
+  c.innerHTML+=`<button class="btn btn-outline" onclick="ouvrirNouvelArticle()" style="margin-top:7px">+ Nouvel article</button>`;
 }
 function changeQty(id,d){const a=articles.find(x=>x.id===id);if(a){a.quantite=Math.max(0,a.quantite+d);saveDB();filterArticles();}}
 function openEditArticle(id){
@@ -797,14 +817,31 @@ function openEditArticle(id){
   document.getElementById('editArticleId').value=id;document.getElementById('editNom').value=a.nom;
   document.getElementById('editPrix').value=a.prixCFP;document.getElementById('editQty').value=a.quantite;
   document.getElementById('editCat').value=a.categorie;document.getElementById('editPromo').value=a.promo2eme||'';
-  document.getElementById('modalArticleTitle').textContent='✏️ '+a.nom;previewConversions();openModal('modalArticle');
+  document.getElementById('modalArticleTitle').textContent='✏️ '+a.nom;renderPrixDevises('edit',a);openModal('modalArticle');
 }
-function previewConversions(){const v=parseInt(document.getElementById('editPrix')?.value);const p=document.getElementById('previewPrix');if(p)p.textContent=v?formatPrixDevises(v):'';}
+// Une ligne par devise : vide = prix calculé (affiché en grisé), montant saisi = prix manuel
+function renderPrixDevises(prefix,a){
+  document.getElementById(prefix+'PrixDevises').innerHTML=DEVISES.map(d=>`<div class="prix-devise-row"><span class="dev">${d}</span><input type="number" id="${prefix}Prix${d}" value="${prixManuel(a,d)??''}" min="0" step="${d==='JPY'?'1':'0.01'}" inputmode="decimal" oninput="majPrixDevises('${prefix}')"><button type="button" class="prix-mode" id="${prefix}Mode${d}" onclick="prixDeviseCalcule('${prefix}','${d}')"></button></div>`).join('')
+    +`<div class="prix-devises-aide">Vide = calculé avec le taux du jour, arrondi au 5 le plus proche (à la centaine au-delà de 1 000). Saisir un montant pour fixer un prix manuel.</div>`;
+  majPrixDevises(prefix);
+}
+function majPrixDevises(prefix){
+  const cfp=parseInt(document.getElementById(prefix+'Prix')?.value)||0;
+  for(const d of DEVISES){
+    const inp=document.getElementById(prefix+'Prix'+d),m=document.getElementById(prefix+'Mode'+d);if(!inp||!m)continue;
+    const calc=convertCFP(cfp,d),manuel=parseFloat(inp.value)>0;
+    inp.placeholder=calc?String(calc):'—';
+    m.textContent=manuel?'Manuel ✕':'Calculé';m.classList.toggle('manuel',manuel);m.disabled=!manuel;
+  }
+}
+function prixDeviseCalcule(prefix,d){const inp=document.getElementById(prefix+'Prix'+d);if(inp)inp.value='';majPrixDevises(prefix);}
+function lirePrixDevises(prefix){const r={};for(const d of DEVISES)r[d]=document.getElementById(prefix+'Prix'+d)?.value;return normPrixDevises(r);}
 function saveArticle(){
   const id=document.getElementById('editArticleId').value,a=articles.find(x=>x.id===id);if(!a)return;
   a.nom=document.getElementById('editNom').value;a.prixCFP=parseInt(document.getElementById('editPrix').value)||0;
   a.quantite=parseInt(document.getElementById('editQty').value)||0;a.categorie=document.getElementById('editCat').value;
   const p=parseInt(document.getElementById('editPromo').value);a.promo2eme=(!isNaN(p)&&p>0)?p:null;
+  const pd=lirePrixDevises('edit');if(pd)a.prixDevises=pd;else delete a.prixDevises;
   saveDB();filterArticles();closeModal('modalArticle');showToast('✓ Mis à jour');
 }
 function deleteArticle(){
@@ -813,9 +850,12 @@ function deleteArticle(){
   articles=articles.filter(x=>x.id!==id);
   saveDB();filterArticles();closeModal('modalArticle');showToast('🗑 Article supprimé');
 }
+function ouvrirNouvelArticle(){renderPrixDevises('new',null);openModal('modalNouvelArticle');}
 function creerArticle(){
   const nom=document.getElementById('newNom').value.trim();if(!nom){showToast('⚠ Nom requis');return;}
-  articles.push({id:'art_'+Date.now(),nom,categorie:document.getElementById('newCat').value,prixCFP:parseInt(document.getElementById('newPrix').value)||0,quantite:parseInt(document.getElementById('newQty').value)||0,promo2eme:null});
+  const pd=lirePrixDevises('new');
+  articles.push({id:'art_'+Date.now(),nom,categorie:document.getElementById('newCat').value,prixCFP:parseInt(document.getElementById('newPrix').value)||0,quantite:parseInt(document.getElementById('newQty').value)||0,promo2eme:null,...(pd?{prixDevises:pd}:{})});
+  document.getElementById('newNom').value='';document.getElementById('newPrix').value='';document.getElementById('newQty').value=1;
   saveDB();filterArticles();closeModal('modalNouvelArticle');showToast('✓ Créé');
 }
 
@@ -843,6 +883,15 @@ function calcLT(aid,qty){const a=articles.find(x=>x.id===aid);if(!a)return 0;let
 function calcST(){return panier.reduce((a,p)=>a+calcLT(p.articleId,p.qty),0);}
 function getRemise(){return parseInt(document.getElementById('remiseMontant')?.value)||0;}
 function calcTotal(){return Math.max(0,calcST()-getRemise());}
+// Ligne en devise : prix de vente en devise × quantité, la 2ème unité en promo étant arrondie comme un prix
+function calcLTDevise(aid,qty,d){const a=articles.find(x=>x.id===aid);if(!a)return 0;const p=prixDevise(a,d)||0;let t=0;for(let i=1;i<=qty;i++)t+=(i%2===0&&a.promo2eme)?arrondirDevise(p*(1-a.promo2eme/100)):p;return t;}
+// Total du panier en devise ; une remise (saisie en CFP) est convertie et le total ré-arrondi
+function calcTotalDevise(d){
+  if(!rates[d]||calcTotal()<=0)return 0;
+  const st=Math.round(panier.reduce((a,p)=>a+calcLTDevise(p.articleId,p.qty,d),0)*100)/100,rem=getRemise();
+  return rem>0?arrondirDevise(st-rem/rates[d]):st;
+}
+function formatTotalDevises(){return DEVISES.map(d=>{const v=calcTotalDevise(d);return v?`${d} ${fmtMontant(v)}`:null;}).filter(Boolean).join(' · ');}
 function updateTotal(){renderPanierTotal();renderDeviseGrid();}
 function clearRemise(){document.getElementById('remiseMontant').value='';updateTotal();}
 function renderPanier(){
@@ -860,7 +909,7 @@ function renderPanierTotal(){
   let h=`<div class="total-line"><span>Sous-total</span><span>${sub.toLocaleString('fr-FR')} CFP</span></div>`;
   if(rem>0)h+=`<div class="total-line"><span>Remise</span><span style="color:var(--green)">-${rem.toLocaleString('fr-FR')} CFP</span></div>`;
   h+=`<div class="total-line grand"><span>TOTAL</span><span>${tot.toLocaleString('fr-FR')} CFP</span></div>`;
-  const d2=formatPrixDevises(tot);if(d2)h+=`<div style="font-size:11px;color:var(--text3);margin-top:5px">${d2}</div>`;
+  const d2=formatTotalDevises();if(d2)h+=`<div style="font-size:11px;color:var(--text3);margin-top:5px">${d2}</div>`;
   document.getElementById('panierTotal').innerHTML=h;
 }
 function updatePanierBadge(){const t=panier.reduce((a,p)=>a+p.qty,0);const b=document.getElementById('panierBadge');b.style.display=t>0?'block':'none';b.textContent=t;}
@@ -870,7 +919,7 @@ function renderDeviseGrid(){
   const total=calcTotal();
   c.innerHTML=['CFP','AUD','USD','EUR','NZD','JPY','TPE'].map(d=>{
     const isTpe=d==='TPE',rate=rates[d]?`1 ${d} = ${fmtTaux(rates[d])} CFP`:'';
-    let sug=d==='CFP'||d==='TPE'?total:(rates[d]?convertCFP(total,d)||'':'');
+    let sug=d==='CFP'||d==='TPE'?total:(calcTotalDevise(d)||'');
     return`<div class="devise-card ${isTpe?'tpe':''}" id="devCard${d}" onclick="selectDevise('${d}')">
       <div class="devise-name">${isTpe?'💳 Carte / TPE':'💵 '+d}</div>
       ${rate&&!isTpe?`<div class="devise-rate">${rate}</div>`:''}
@@ -888,17 +937,23 @@ function calcMonnaie(d){
   if(!inp||!mon)return;const given=parseFloat(inp.value)||0;
   if(d==='CFP'){const ch=given-total;mon.textContent=ch>0?`Monnaie: ${ch.toLocaleString('fr-FR')} CFP`:'';if(info){info.style.display=(given>0&&given<total)?'block':'none';if(given>0&&given<total)info.textContent=`Remise à l'encaissement: ${(total-given).toLocaleString('fr-FR')} CFP`;}}
   else if(d==='TPE'){mon.textContent='';if(info){info.style.display=(given>0&&given<total)?'block':'none';if(given>0&&given<total)info.textContent=`Remise carte: ${(total-given).toLocaleString('fr-FR')} CFP`;}}
-  else if(rates[d]){const td=convertCFP(total,d);mon.textContent=`Total: ~${td} ${d}`;if(given>0){const ch=Math.round(given*rates[d])-total;if(ch>0)mon.textContent+=` · Monnaie ~${ch} CFP`;else if(ch<0&&info){info.style.display='block';info.textContent=`Remise: ~${Math.abs(ch)} CFP`;}}}
+  else if(rates[d]){
+    const td=calcTotalDevise(d),cfp=x=>Math.round(x*rates[d]).toLocaleString('fr-FR');
+    mon.textContent=`Total: ${fmtMontant(td)} ${d}`;if(info)info.style.display='none';
+    if(given>td)mon.textContent+=` · Monnaie ${fmtMontant(Math.round((given-td)*100)/100)} ${d} (~${cfp(given-td)} CFP)`;
+    else if(given>0&&given<td&&info){info.style.display='block';info.textContent=`Remise: ${fmtMontant(Math.round((td-given)*100)/100)} ${d} (~${cfp(td-given)} CFP)`;}
+  }
 }
 function validerVente(){
   if(!panier.length){showToast('⚠ Panier vide');return;}if(!selectedDevise){showToast('⚠ Mode paiement requis');return;}
   const st=calcST(),rp=getRemise(),tot=calcTotal(),given=parseFloat(document.getElementById('devInput'+selectedDevise)?.value)||0;
   // montantEncaisse toujours en CFP (hors monnaie rendue) ; en devise étrangère on garde aussi le montant reçu et le taux appliqué
+  // En devise, le prix demandé est la somme des prix de vente en devise ; la monnaie rendue n'est pas encaissée
   const etranger=selectedDevise!=='CFP'&&selectedDevise!=='TPE',taux=etranger?rates[selectedDevise]:null;
-  const montantDevise=etranger?(given||convertCFP(tot,selectedDevise)||0):null;
-  const enc=Math.min(tot,etranger?Math.round(montantDevise*taux):(given||tot)),re=Math.max(0,tot-enc);
+  const totalDevise=etranger?calcTotalDevise(selectedDevise):null,montantDevise=etranger?(given||totalDevise):null;
+  const enc=Math.min(tot,etranger?Math.round(Math.min(montantDevise,totalDevise)*taux):(given||tot)),re=Math.max(0,tot-enc);
   for(const p of panier){const a=articles.find(x=>x.id===p.articleId);if(a)a.quantite=Math.max(0,a.quantite-p.qty);}
-  ventes.push({id:Date.now(),ts:new Date().toISOString(),articles:panier.map(p=>({articleId:p.articleId,nom:articles.find(x=>x.id===p.articleId)?.nom||'?',qty:p.qty,prixUnit:articles.find(x=>x.id===p.articleId)?.prixCFP||0,total:calcLT(p.articleId,p.qty)})),sousTotal:st,remisePanier:rp,remiseEncaissement:re,total:tot,montantEncaisse:enc,devise:selectedDevise,...(etranger?{montantDevise,tauxCFP:taux}:{})});
+  ventes.push({id:Date.now(),ts:new Date().toISOString(),articles:panier.map(p=>({articleId:p.articleId,nom:articles.find(x=>x.id===p.articleId)?.nom||'?',qty:p.qty,prixUnit:articles.find(x=>x.id===p.articleId)?.prixCFP||0,total:calcLT(p.articleId,p.qty)})),sousTotal:st,remisePanier:rp,remiseEncaissement:re,total:tot,montantEncaisse:enc,devise:selectedDevise,...(etranger?{montantDevise,totalDevise,tauxCFP:taux}:{})});
   saveDB();panier=[];selectedDevise=null;if(document.getElementById('remiseMontant'))document.getElementById('remiseMontant').value='';
   renderPanier();updatePanierBadge();filterArticles();renderCloture();showToast('✓ Vente — '+enc.toLocaleString('fr-FR')+' CFP');
 }
@@ -991,7 +1046,10 @@ async function loadFromGoogle(){
     const data=await r.json();
     let changed=false;
     // Stock
-    if(data.articles?.length){articles=data.articles;changed=true;}
+    if(data.articles?.length){
+      articles=data.articles.map(r=>{const{prixDevises,...a}=r,pd=normPrixDevises(prixDevises)||articles.find(x=>x.id===r.id)?.prixDevises;return pd?{...a,prixDevises:pd}:a;});
+      changed=true;
+    }
     // Sessions — injecter dans un bucket spécial de l'historique
     if(data.allSessions?.length){
       // Toutes les sessions déjà connues localement (IDs)
