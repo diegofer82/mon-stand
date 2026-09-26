@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "lib": ["ES2024"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "target": "ES2024",
+    "types": ["./worker-configuration.d.ts", "@cloudflare/vitest-plugin/types", "vitest/globals"],
+    "verbatimModuleSyntax": true
+  },
+  "include": ["worker-configuration.d.ts", "worker/**/*.ts", "shared/**/*.ts", "test/**/*.ts"]
+}

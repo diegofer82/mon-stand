@@ -1,0 +1,14 @@
+# Dependencias y salidas
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Cloudflare: estado local de D1/KV/R2 y configuración generada
+.wrangler/
+
+# Secretos locales
+.dev.vars
+.dev.vars.*
+.env
+.env.*
