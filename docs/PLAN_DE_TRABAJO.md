@@ -15,6 +15,7 @@
 | Varios teléfonos a la vez | **No por ahora**, pero el modelo de datos se diseña multi-dispositivo desde el día 1; el tiempo real queda en Backlog |
 | Diseño | Rediseño completo con **/design** (Design System + canvas de pantallas en claude.ai) |
 | Plan Cloudflare | **Workers Paid** (5 $/mes) + **Zero Trust Teams Free** (Access hasta 50 usuarios), ambos activos — ver §3 |
+| Google Sheets en la v1 | **No se corrige** (bug 5, duplicados, script v1.2): la app no se usa hasta el próximo mercado (~2026-10-03) y la sync se retira con la v2 (decidido 2026-09-26) |
 
 ---
 
@@ -42,6 +43,16 @@
 | 11 | `innerHTML` con nombres/comentarios sin escapar | l. 690, 775… | HTML roto / inyección |
 | 12 | `user-scalable=no`, `</div>` sobrante, `google-apps-script.js` ausente del repo | l. 5, 317, 401 | Accesibilidad, HTML inválido, config no reproducible |
 | 13 | Cobro en divisa: `montantEncaisse` guardado en la divisa y sumado como CFP; `remiseEncaissement` = CFP − divisa | `validerVente` | «Total encaissé» falso y remises ficticias (detectado en la Fase 0) |
+| 14 | Precio en divisa = total CFP convertido y redondeado **hacia arriba** al múltiplo de 5 | `arrondir5`, `convertCFP` | La app sugería 30 AUD por un collar de 2 000 CFP (la vendedora cobra 25) y 55 AUD por dos (cobra 50); sin precio fijo por divisa |
+
+### Google Sheets (revisado el 2026-09-26 con el `.xlsx` de la hoja y el script v1.2)
+
+- **Nada que importar**: las ventas (21), sesiones (5) y el stock de la hoja están todos en el export del teléfono, que tiene además el 18/04 y las sesiones de abril.
+- «Ventes»: cada sync vuelve a añadir todas las ventas del día (`appendRows`) → 62 filas para 21 ventas. Sin fila de cabecera.
+- Hoja en configuración regional US: las fechas `JJ/MM/AAAA` con día ≤ 12 quedan invertidas (07/05 → 5 de julio); las demás quedan como texto.
+- «Heures»: 6 columnas, sin cabecera, 77 filas para 5 sesiones → no corresponde al script v1.2 (que borra la hoja y escribe 8 columnas con `ID` y `Payée`): **el despliegue activo es una versión anterior**.
+- Script v1.2 (no desplegado): `Payée` se escribe `OUI`/`NON` pero se lee como `TRUE`/`1` → al cargar, todas las sesiones pasarían a «no pagada»; Sheets convierte `Arrivée`/`Départ` en horas → `debut`/`fin` inválidos. **No desplegarlo tal cual.**
+- `loadAll` devuelve el stock sin precios en divisa: la v1.5 conserva los `prixDevises` del teléfono.
 
 ---
 
@@ -88,13 +99,14 @@ vendeurs          id, prenom, pin_hash, pin_salt, taux_horaire_cfp, actif, creat
 devices           id, nom, token_hash, vendeur_id?, created_at, last_seen_at
 categories        id, nom, emoji, ordre
 articles          id, nom, categorie_id, prix_cfp, promo_2eme_pct?, photo_key?, actif, updated_at
+article_prix      article_id, devise, prix, updated_at               ← precio manual; sin fila = calculado
 stock_mouvements  id, article_id, delta, motif, vente_id?, vendeur_id, device_id, ts
 journees          id, date_locale, lieu, vendeur_id, ouverte_at, cloturee_at?, pdf_key?
 ventes            id, journee_id, vendeur_id, device_id, ts, sous_total_cfp,
                   remise_panier_cfp, remise_encaissement_cfp, total_cfp, annulee_at?
 vente_lignes      id, vente_id, article_id, nom_snapshot, qty, prix_unit_cfp, total_cfp
 vente_paiements   id, vente_id, devise (CFP|AUD|USD|EUR|NZD|JPY|TPE),
-                  montant_devise, taux_cfp, montant_cfp          ← permite pago mixto
+                  montant_devise, total_devise, taux_cfp, montant_cfp  ← permite pago mixto
 comptages_caisse  id, journee_id, devise, attendu, compte, ecart
 sessions_travail  id, vendeur_id, debut, fin?, duree_min, commentaire, payee_at?
 paiements_heures  id, vendeur_id, montant_cfp, date, note
@@ -220,7 +232,18 @@ Estimaciones orientativas en días de trabajo efectivo.
 
 **Hecho cuando**: v1.4 en producción y el export probado en el teléfono de la vendedora.
 
-**Estado**: v1.4 mergeada en `main` (PR #2). Falta probar el export en el teléfono de la vendedora.
+**Estado**: hecha. v1.4 mergeada en `main` (PR #2); export probado en el teléfono de la vendedora el 2026-09-26 (26 artículos, 4 cierres v1.3 → `clo_legacy_0…3`, tasas con decimales).
+
+### Fase 0.5 — Precios en divisa → v1.5 (GitHub Pages)
+- [x] Redondeo `arrondirDevise`: al **5 más cercano**; por encima de **1 000** (JPY) a la **centena más cercana** (bug 14)
+- [x] Precio de venta por divisa en el stock: **calculado** (por defecto) o **manual** (`article.prixDevises = {AUD: 27}`; solo los manuales)
+- [x] Caja: total en divisa = **suma de los precios en divisa** de los artículos (2ª unidad en promo redondeada igual; remise en CFP convertida y total re-redondeado)
+- [x] Cobro en divisa: la monnaie devuelta no cuenta como cobrado (`montantEncaisse` ≤ precio en divisa × tasa); nuevo campo `totalDevise` (precio pedido en la divisa)
+- [x] `loadFromGoogle` conserva los `prixDevises` locales si la hoja no los trae
+
+Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas en divisa** del historial (la v1.4 fallaba 8 de 12).
+
+**Estado**: mergeada en `main` (PR #3) el 2026-09-26. Falta probarla en el teléfono de la vendedora antes del próximo mercado (~2026-10-03).
 
 ### Fase 1 — Diseño con /design (≈ 2–3 días)
 - [ ] Design System "Debajah Création"
@@ -243,7 +266,7 @@ Estimaciones orientativas en días de trabajo efectivo.
 
 ### Fase 3 — Nueva interfaz (≈ 5–7 días)
 - [ ] Componentes del Design System
-- [ ] `src/domain/`: lógica de negocio pura con tests — promo 2ª unidad, remises, monnaie, conversiones y redondeos (`arrondir5`), redondeo de horas a 30 min, totales de cierre. Primero tests que reproduzcan el comportamiento v1, luego las correcciones
+- [ ] `src/domain/`: lógica de negocio pura con tests — promo 2ª unidad, remises, monnaie, precios en divisa calculados/manuales y redondeos (`arrondirDevise`, v1.5), redondeo de horas a 30 min, totales de cierre. Primero tests que reproduzcan el comportamiento v1 (las 12 ventas en divisa del export sirven de casos), luego las correcciones
 - [ ] Pantallas en orden de valor: Caja → Cobro → Stock → Cierre → Horas → Ajustes
 - [ ] PWA: manifest, iconos, service worker, Dexie, outbox; todo funciona sin red
 - [ ] Textos centralizados (FR por defecto) para poder añadir EN más adelante
@@ -271,7 +294,8 @@ Estimaciones orientativas en días de trabajo efectivo.
 - [ ] Importador "v1 JSON → D1" en `/admin` (idempotente, con informe de lo importado)
   - Ventas v1.4: `montantEncaisse` en CFP + `montantDevise`/`tauxCFP` en divisa. Ventas v1.3 (sin `montantDevise`): `montantEncaisse` está en la divisa de `devise` y no guarda la tasa
   - Cierres v1.3 sin `id` (el export les asigna `clo_legacy_N`) y con fecha UTC si se cerraron antes de las 11:00
-- [ ] Si hay datos en Google Sheets: exportarlos una vez e importarlos
+  - Artículos v1.5: `prixDevises` (solo precios manuales) → `article_prix`. Ventas v1.5 en divisa: `totalDevise` → `vente_paiements.total_devise`
+- [x] ~~Si hay datos en Google Sheets: exportarlos una vez e importarlos~~ — no hace falta, todo está en el export del teléfono (§1)
 - [ ] Un día de mercado con v1 y v2 en paralelo; comparar cierres
 - [ ] Corte: `index.html` raíz → página de redirección a `workers.dev`; v1 archivada en `legacy/`
 - [ ] Desactivar el despliegue de Apps Script; actualizar el README
@@ -310,4 +334,4 @@ Estimaciones orientativas en días de trabajo efectivo.
 - [x] Conector "Cloudflare Developer Platform" conectado y verificado (lectura de Workers, D1, KV).
 - [x] R2 activado y verificado.
 - [ ] ¿Hay un dominio en la cuenta Cloudflare para el envío de email?
-- [ ] ¿Hay datos en Google Sheets que importar?
+- [x] ¿Hay datos en Google Sheets que importar? **No** (verificado el 2026-09-26, ver §1).

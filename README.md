@@ -7,7 +7,7 @@ Application web pour gérer un stand artisanal : pointage, inventaire, caisse mu
 ## ✅ Ce que fait l'app
 
 - **Pointage** : arrivée/départ, calcul des heures, statut payé/non payé
-- **Stock** : inventaire complet, quantités, prix CFP + conversions automatiques AUD/USD/EUR/NZD/JPY
+- **Stock** : inventaire complet, quantités, prix CFP + prix de vente en AUD/USD/EUR/NZD/JPY (calculés automatiquement ou fixés à la main)
 - **Caisse** : panier, promos 2ème unité, remise manuelle, encaissement multi-devises ou TPE carte
 - **Clôture** : résumé journalier, export PDF, historique des journées passées
 - **Taux de change** : récupérés automatiquement depuis Internet, modifiables manuellement
@@ -79,6 +79,14 @@ Les autres devises (AUD, USD, NZD, JPY) sont calculées à partir des taux de l'
 Les taux sont récupérés automatiquement au démarrage et gardent leurs décimales (1 ¥ ≈ 0,66 CFP).  
 En cas de problème de connexion, les derniers taux enregistrés sont utilisés.  
 Tu peux toujours modifier manuellement via le bouton **📊 Taux** en haut de l'app.
+
+## 💱 Prix en devise
+
+Chaque article a un prix de vente dans chaque devise (AUD, USD, EUR, NZD, JPY) :
+- **Calculé** (par défaut) : prix CFP ÷ taux du jour, arrondi au **5 le plus proche** (…20, 25, 30…) ; au-delà de **1 000** (ex. JPY), arrondi à la **centaine la plus proche**. Exemple : 2 000 CFP → 25 AUD, 20 USD, 3 000 ¥.
+- **Manuel** : dans **Stock → ✏️**, saisir le montant dans la devise voulue. Il ne bouge plus avec les taux. Le bouton **Manuel ✕** remet le prix calculé.
+
+À la caisse, le total en devise est la **somme des prix en devise** des articles (2 colliers à 25 AUD = 50 AUD). La 2ème unité en promo est arrondie de la même façon ; une remise panier (en CFP) est convertie puis le total ré-arrondi.
 
 ---
 
