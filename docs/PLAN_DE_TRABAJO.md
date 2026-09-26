@@ -243,7 +243,7 @@ Estimaciones orientativas en días de trabajo efectivo.
 
 Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas en divisa** del historial (la v1.4 fallaba 8 de 12).
 
-**Estado**: PR abierto; falta probarlo en el teléfono de la vendedora antes del merge.
+**Estado**: mergeada en `main` (PR #3) el 2026-09-26. Falta probarla en el teléfono de la vendedora antes del próximo mercado (~2026-10-03).
 
 ### Fase 1 — Diseño con /design (≈ 2–3 días)
 - [ ] Design System "Debajah Création"
