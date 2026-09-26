@@ -1,0 +1,74 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Nivel superior = desarrollo local (vite dev, tests). Preview y producción viven en "env":
+  // se eligen con CLOUDFLARE_ENV en el build (Vite) y Wrangler despliega la configuración generada.
+  "name": "mon-stand-local",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "vars": {
+    "ENVIRONMENT": "local",
+    // Un solo bucket R2 para todos los entornos: cada uno escribe bajo su prefijo.
+    "R2_PREFIX": "local/",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mon-stand-local",
+      "database_id": "00000000-0000-0000-0000-000000000001",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "kv_namespaces": [{ "binding": "TAUX", "id": "00000000000000000000000000000001" }],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "mon-stand-local" }],
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+  },
+  "upload_source_maps": true,
+  "env": {
+    "preview": {
+      "name": "mon-stand-preview",
+      "workers_dev": true,
+      "preview_urls": true,
+      "vars": {
+        "ENVIRONMENT": "preview",
+        "R2_PREFIX": "preview/",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "mon-stand-preview",
+          "database_id": "3c0f06f4-9291-491d-bad5-990afa6e0711",
+          "migrations_dir": "migrations",
+        },
+      ],
+      // Las tasas de cambio son públicas y las mismas en todos los entornos.
+      "kv_namespaces": [{ "binding": "TAUX", "id": "e76bf9358d74495c9b55af5110c7ba99" }],
+      "r2_buckets": [{ "binding": "FILES", "bucket_name": "mon-stand-files" }],
+    },
+    "production": {
+      "name": "mon-stand",
+      "workers_dev": true,
+      "preview_urls": false,
+      "vars": {
+        "ENVIRONMENT": "production",
+        "R2_PREFIX": "production/",
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "mon-stand-production",
+          "database_id": "c0ece21c-a5c7-4179-b5f2-0f8169b0cc8f",
+          "migrations_dir": "migrations",
+        },
+      ],
+      "kv_namespaces": [{ "binding": "TAUX", "id": "e76bf9358d74495c9b55af5110c7ba99" }],
+      "r2_buckets": [{ "binding": "FILES", "bucket_name": "mon-stand-files" }],
+    },
+  },
+}

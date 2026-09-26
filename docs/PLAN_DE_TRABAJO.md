@@ -98,15 +98,17 @@
 vendeurs          id, prenom, pin_hash, pin_salt, taux_horaire_cfp, actif, created_at
 devices           id, nom, token_hash, vendeur_id?, created_at, last_seen_at
 categories        id, nom, emoji, ordre
-articles          id, nom, categorie_id, prix_cfp, promo_2eme_pct?, photo_key?, actif, updated_at
+articles          id, nom, categorie_id, emoji?, prix_cfp, promo_2eme_pct?, photo_key?, actif, updated_at
 article_prix      article_id, devise, prix, updated_at               ← precio manual; sin fila = calculado
 stock_mouvements  id, article_id, delta, motif, vente_id?, vendeur_id, device_id, ts
-journees          id, date_locale, lieu, vendeur_id, ouverte_at, cloturee_at?, pdf_key?
+journees          id, date_locale, lieu, vendeur_id, fond_caisse_cfp?, ouverte_at, cloturee_at?,
+                  commentaire_cloture?, pdf_key?
 ventes            id, journee_id, vendeur_id, device_id, ts, sous_total_cfp,
                   remise_panier_cfp, remise_encaissement_cfp, total_cfp, annulee_at?
 vente_lignes      id, vente_id, article_id, nom_snapshot, qty, prix_unit_cfp, total_cfp
 vente_paiements   id, vente_id, devise (CFP|AUD|USD|EUR|NZD|JPY|TPE),
-                  montant_devise, total_devise, taux_cfp, montant_cfp  ← permite pago mixto
+                  montant_devise, total_devise, taux_cfp, montant_cfp,  ← permite pago mixto
+                  rendu_montant?, rendu_devise?                         ← monnaie devuelta (AUD o CFP)
 comptages_caisse  id, journee_id, devise, attendu, compte, ecart
 sessions_travail  id, vendeur_id, debut, fin?, duree_min, commentaire, payee_at?
 paiements_heures  id, vendeur_id, montant_cfp, date, note
@@ -284,22 +286,24 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 - [x] Design System "Debajah Création" (primera versión, §4)
 - [x] Canvas con todas las pantallas (§4), claro/oscuro, móvil + tablet + `/admin`
 - [x] Revisión e iteración — validado el 2026-09-26 con un cambio: «Tout» ordenado por ventas (§4)
-- [ ] Tokens finales listos para Tailwind (`@theme`)
+- [x] Tokens finales listos para Tailwind (`@theme`): `app/src/styles/app.css`
 
 **Hecho cuando**: pantallas validadas por el propietario y la vendedora.
 
-**Estado**: pantallas validadas el 2026-09-26 (enlaces en §4). Quedan los tokens para Tailwind y las respuestas de la vendedora a las preguntas de §4.
+**Estado**: hecha. Pantallas validadas el 2026-09-26 (enlaces en §4) y tokens en `app/src/styles/app.css`. Quedan las respuestas de la vendedora a las preguntas de §4, necesarias antes de la Fase 3.
 
 ### Fase 2 — Fundaciones Cloudflare (≈ 2 días)
-- [ ] Proyecto `app/`: Vite + React + TS + `@cloudflare/vite-plugin` + Hono; ESLint, Prettier, Vitest
+- [x] Proyecto `app/`: Vite + React + TS + `@cloudflare/vite-plugin` + Hono; ESLint, Prettier, Vitest (suite Worker en el runtime real contra D1 migrada + suite de dominio)
 - [x] **Activar R2** en el dashboard de Cloudflare (activado y verificado el 2026-09-25)
-- [ ] `wrangler.jsonc` con entornos producción y preview, siguiendo la convención de la cuenta (`controlcash` / `controlcash-preview`): Workers `mon-stand` y `mon-stand-preview`; D1 `mon-stand-production` y `mon-stand-preview`; KV `mon-stand-taux`; R2 `mon-stand-files`; Browser Run; cron
-- [ ] Migración D1 inicial (esquema §2) con Drizzle
-- [ ] Workers Builds conectado al repo (directorio raíz `app/`): deploy en push a `main`, URL de preview por PR
-- [ ] Publicación en `mon-stand.<cuenta>.workers.dev`; Cloudflare Access sobre las URLs de preview y `/admin`
-- [ ] CI GitHub Actions: typecheck + tests en cada PR
+- [x] `wrangler.jsonc` con entornos local, preview y producción, siguiendo la convención de ControlCash: Workers `mon-stand` y `mon-stand-preview`; D1 `mon-stand-production` y `mon-stand-preview` (creadas el 2026-09-26 en Oceanía); KV `mon-stand-taux` (compartido: tasas públicas); R2 `mon-stand-files` (un prefijo por entorno). Browser Run y cron se añaden en la Fase 5 con su código
+- [x] Migración D1 inicial (esquema §2 + validación del diseño) con Drizzle: `app/migrations/0000_init.sql`, 16 tablas, aplicada a preview y producción el 2026-09-26
+- [ ] Workers Builds conectado al repo (directorio raíz `app/`): deploy en push a `main`, URL de preview por PR — pasos en [`app/README.md`](../app/README.md), a hacer en el panel de Cloudflare
+- [ ] Publicación en `mon-stand.<cuenta>.workers.dev`; Cloudflare Access sobre las URLs de preview (`/admin` en la Fase 4)
+- [x] CI GitHub Actions (`.github/workflows/ci.yml`): formato, lint, tipos de bindings, typecheck, tests y build en cada PR
 
 **Hecho cuando**: una página React + `/api/health` leyendo D1 están desplegadas en `workers.dev`, con preview por PR.
+
+**Estado**: todo lo que se hace desde el repositorio está listo y verificado en local (`/api/health` responde con la D1 migrada). Falta conectar los dos Workers a Workers Builds y activar Access en las previews, desde el panel de Cloudflare.
 
 ### Fase 3 — Nueva interfaz (≈ 5–7 días)
 - [ ] Componentes del Design System
