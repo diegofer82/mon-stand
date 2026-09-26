@@ -15,6 +15,7 @@
 | Varios teléfonos a la vez | **No por ahora**, pero el modelo de datos se diseña multi-dispositivo desde el día 1; el tiempo real queda en Backlog |
 | Diseño | Rediseño completo con **/design** (Design System + canvas de pantallas en claude.ai) |
 | Plan Cloudflare | **Workers Paid** (5 $/mes) + **Zero Trust Teams Free** (Access hasta 50 usuarios), ambos activos — ver §3 |
+| Google Sheets en la v1 | **No se corrige** (bug 5, duplicados, script v1.2): la app no se usa hasta el próximo mercado (~2026-10-03) y la sync se retira con la v2 (decidido 2026-09-26) |
 
 ---
 
