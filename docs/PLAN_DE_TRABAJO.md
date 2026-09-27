@@ -362,19 +362,22 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 
 El export del 2026-09-26 es definitivo (§0): una sola importación, sin día de mercado en paralelo. Requisito: la Fase 4 desplegada (la API ya no es pública).
 
-- [ ] Importador "export v1 JSON → D1": script local en `app/scripts/` que genera el SQL y se aplica a producción con Wrangler. Se ejecuta una vez, así que no hace falta pantalla en `/admin`; es idempotente (ids derivados del export, `INSERT OR IGNORE`) por si hay que repetirlo tras una corrección, y da un informe de lo importado. Se prueba en la D1 local con un export sintético: **el export real nunca entra en el repo**
-  - Ventas v1.4: `montantEncaisse` en CFP + `montantDevise`/`tauxCFP` en divisa. Ventas v1.3 (sin `montantDevise`): `montantEncaisse` está en la divisa de `devise` y no guarda la tasa
-  - Cierres v1.3 sin `id` (el export les asigna `clo_legacy_N`) y con fecha UTC si se cerraron antes de las 11:00
-  - Artículos v1.5: `prixDevises` (solo precios manuales) → `article_prix`. Ventas v1.5 en divisa: `totalDevise` → `vente_paiements.total_devise`
+- [x] Importador "export v1 JSON → D1" (`app/shared/import-v1.ts`, puro; CLI `node app/scripts/importer-v1.mjs <export.json> --sortie <import.sql>`): genera el SQL (idempotente: ids derivados del export, `INSERT OR IGNORE`) y un informe con el CA de cada cierre comparado con el `totalEncaisse` de la v1, más avisos. Probado en la D1 local con `app/test/fixtures/export-v1-synthetique.json` (`app/test/import-v1.spec.ts`: dos pasadas, mismas cuentas): **el export real nunca entra en el repo**
+  - Ventas v1.4/v1.5: `montantEncaisse` en CFP + `montantDevise`/`totalDevise`/`tauxCFP` en divisa → `vente_paiements`. Ventas v1.3 (sin `montantDevise`): lo recibido está en la divisa y no hay tasa → se acredita el total de la venta y el informe lo avisa
+  - Cierres v1.3 sin `id` (`clo_legacy_N`): la fecha se recalcula en Nouméa a partir de `clotureAt` (el informe muestra los cambios)
+  - Artículos v1.5: `prixDevises` → `article_prix`; el stock del export es la verdad (un movimiento `inventaire` por artículo); ventas sin cierre → jornada «en cours» abierta; sesiones (`payee` → `payee_at`); tasas del export → `taux_historique`; vendedora `vend_1` con el prénom y el taux horaire de `settings`, PIN `1234` (a cambiar)
+- [x] Scripts de purga y comprobación: `app/scripts/purger-production.sql` (conserva los teléfonos emparejados) y `app/scripts/verifier-vide.sql` (cuentas por tabla). Mode d'emploi completo en [`app/README.md`](../app/README.md) (§ Migración)
 - [x] ~~Si hay datos en Google Sheets: exportarlos una vez e importarlos~~ — no hace falta, todo está en el export del teléfono (§1)
 - [x] ~~Un día de mercado con v1 y v2 en paralelo~~ — sustituido por el ensayo y la verificación siguientes: el mercado está parado (§0)
-- [ ] Ensayo con la vendedora en producción: instalar la PWA en su teléfono, emparejarlo y simular una jornada (ventas en modo avión, cobro en AUD con monnaie, conteo de caja, cierre)
-- [ ] Borrar los datos de prueba (ventas, jornadas, movimientos de stock… tabla por tabla, comprobando que quedan a cero) e importar el export
-- [ ] Verificar contra el export: 26 artículos y su stock, número de ventas, CA y reparto por divisa de cada uno de los 4 cierres, horas por sesión
-- [ ] Corte: `index.html` raíz → página de redirección a `workers.dev`; v1 archivada en `legacy/`
+- [ ] **(Diego)** Ensayo con la vendedora en producción: generar un código en <https://mon-stand.applis.workers.dev/admin> (jeton `ADMIN_TOKEN`), instalar la PWA en su teléfono, emparejarlo y simular una jornada (ventas en modo avión, cobro en AUD con monnaie, conteo de caja, cierre → PDF en el panel)
+- [ ] **(Diego)** Borrar los datos de prueba con `app/scripts/purger-production.sql`, comprobar con `app/scripts/verifier-vide.sql` que todo está a cero e importar el SQL generado por el importador (`npx wrangler d1 execute mon-stand-production --remote --env production --file …`)
+- [ ] **(Diego)** Verificar contra el export: 26 artículos y su stock (pestaña Stock del teléfono tras un désappairage/re-emparejamiento), número de ventas, CA y reparto por divisa de cada uno de los 4 cierres (pestaña Journées de `/admin` y el informe del importador), horas por sesión (pestaña Heures)
+- [ ] Corte (después del ensayo): `index.html` raíz → página de redirección a `workers.dev`; v1.5 archivada en `legacy/v1.5/`
 - [ ] Desactivar el despliegue de Apps Script; actualizar el README
 
 **Hecho cuando**: antes de la reanudación del mercado, la vendedora tiene la v2 instalada y todo el historial está en D1.
+
+**Estado**: importador, purga y verificación listos el 2026-09-27; el resto depende del teléfono de la vendedora y del export real (fuera del repo), así que lo hace Diego siguiendo el mode d'emploi del README. El corte se prepara en un PR aparte cuando el ensayo esté validado, para que la v1.5 siga siendo el plan B hasta entonces.
 
 **Total orientativo: ~3 semanas de trabajo efectivo**, con los 3 meses de parada como margen.
 
