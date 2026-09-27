@@ -25,31 +25,34 @@ Para **añadir o actualizar una dependencia** usar `npx npm@11 install …`: `np
 
 ## Entornos
 
-| Entorno    | Worker              | D1                                  | Cómo se construye          |
-| ---------- | ------------------- | ----------------------------------- | -------------------------- |
-| local      | —                   | `mon-stand-local` (en `.wrangler/`) | `npm run dev`              |
-| preview    | `mon-stand-preview` | `mon-stand-preview`                 | `npm run build:preview`    |
-| production | `mon-stand`         | `mon-stand-production`              | `npm run build:production` |
+No hay entorno preview (decidido el 2026-09-27, ver el plan): se prueba en local y se despliega a producción.
 
-KV `mon-stand-taux` (tasas de cambio) es el mismo en preview y producción. R2 `mon-stand-files` es un solo bucket: cada entorno escribe bajo su prefijo (`R2_PREFIX`).
+| Entorno    | Worker      | D1                                  | Cómo se construye          |
+| ---------- | ----------- | ----------------------------------- | -------------------------- |
+| local      | —           | `mon-stand-local` (en `.wrangler/`) | `npm run dev`              |
+| production | `mon-stand` | `mon-stand-production`              | `npm run build:production` |
+
+KV `mon-stand-taux` guarda las tasas de cambio. R2 `mon-stand-files`: cada entorno escribe bajo su prefijo (`R2_PREFIX`).
 
 ## Base de datos
 
 1. Cambiar `worker/db/schema.ts`.
 2. `npm run db:generate -- --name <descripcion>` → nuevo archivo en `migrations/`.
 3. `npm run db:migrate:local` y `npm test`.
-4. Aplicar a preview antes de probar la rama (`npm run db:migrate:preview`) y a producción justo **antes** del merge (`npm run db:migrate:production`): Workers Builds despliega en cuanto el PR llega a `main`. Por eso una migración solo añade (columnas opcionales, tablas nuevas) y no rompe el código que ya está en producción. Los dos comandos requieren `wrangler login` o un token con permiso D1.
+4. Aplicar a producción justo **antes** del merge (`npm run db:migrate:production`, requiere `wrangler login` o un token con permiso D1): Workers Builds despliega en cuanto el PR llega a `main`. Por eso una migración solo añade (columnas opcionales, tablas nuevas) y no rompe el código que ya está en producción. Sin preview, la migración se prueba entera en local (`npm run db:migrate:local`, `npm test`) antes de tocar producción. Wrangler guarda una copia antes de aplicarla y D1 Time Travel permite volver a cualquier minuto de los últimos 30 días: ante un problema se restaura, no se improvisa SQL en producción.
 
 ## Despliegue (Workers Builds)
 
-Dos Workers conectados al repositorio en el panel de Cloudflare (_Workers & Pages → Create → Import a repository_):
+Un solo Worker conectado al repositorio en el panel de Cloudflare (_mon-stand → Settings → Build → Connect_):
 
-|                       | `mon-stand` (producción)   | `mon-stand-preview`                                                                                 |
-| --------------------- | -------------------------- | --------------------------------------------------------------------------------------------------- |
-| Directorio raíz       | `app`                      | `app`                                                                                               |
-| Comando de build      | `npm run build:production` | `npm run build:preview`                                                                             |
-| Comando de deploy     | `npx wrangler deploy`      | `npx wrangler deploy`                                                                               |
-| Rama de producción    | `main`                     | `main`                                                                                              |
-| Builds de otras ramas | desactivados               | activados, comando `npx wrangler versions upload` (una URL de preview por rama, comentada en el PR) |
+|                       | `mon-stand` (producción)                                   |
+| --------------------- | ---------------------------------------------------------- |
+| Directorio raíz       | `app`                                                      |
+| Comando de build      | `npm run build:production`                                 |
+| Comando de deploy     | `npx wrangler deploy`                                      |
+| Rama de producción    | `main`                                                     |
+| Builds de otras ramas | **desactivados**: una versión de preview usaría la D1 real |
 
-Cloudflare Access protege las URLs de preview (_mon-stand-preview → Settings → Domains & Routes → Cloudflare Access_). La página de producción es pública hasta la Fase 4 (PIN de vendedora y Access en `/admin`).
+Los PR se validan con la CI (`npm run check` en GitHub Actions); el despliegue solo sale de `main`. Mientras Workers Builds no esté conectado, se despliega a mano desde `main` al día: `npm run build:production && npx wrangler deploy`. Para volver a la versión anterior: _mon-stand → Deployments_ o `npx wrangler rollback`.
+
+La página de producción es pública, pero hasta la Fase 4 (PIN de vendedora y Access en `/admin`) solo expone `/api/health`: **no se importan datos reales antes de la Fase 4**.

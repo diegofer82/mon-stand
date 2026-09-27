@@ -9,7 +9,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:preview": "cross-env CLOUDFLARE_ENV=preview vite build",
     "build:production": "cross-env CLOUDFLARE_ENV=production vite build",
     "preview": "vite preview",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
@@ -21,7 +20,6 @@
     "cf-typegen": "wrangler types",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply mon-stand-local --local",
-    "db:migrate:preview": "wrangler d1 migrations apply mon-stand-preview --remote --env preview",
     "db:migrate:production": "wrangler d1 migrations apply mon-stand-production --remote --env production"
   },
   "dependencies": {

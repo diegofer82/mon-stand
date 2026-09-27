@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 
 interface Health {
   statut: 'ok' | 'degrade';
-  environnement: 'local' | 'preview' | 'production';
+  environnement: 'local' | 'production';
   dateMetier: string;
   heureMetier: string;
   base: { ok: true; migration: string | null; tables: number; latenceMs: number } | { ok: false; erreur: string };
@@ -13,7 +13,6 @@ type Etat = { phase: 'chargement' } | { phase: 'ok'; health: Health } | { phase:
 
 const ENVIRONNEMENTS: Record<Health['environnement'], string> = {
   local: 'Local',
-  preview: 'Preview',
   production: 'Production',
 };
 
