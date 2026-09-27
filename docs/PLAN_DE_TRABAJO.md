@@ -349,12 +349,14 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 
 ### Fase 5 — Automatizaciones (≈ 2 días)
 
-- [ ] Cron diario de tasas → KV + `taux_historique`
-- [ ] Cierre: plantilla HTML → Browser Run → PDF en R2 (+ email si hay dominio con Email Routing)
-- [ ] Panel `/admin`: KPIs, por mercado, horas a pagar, export CSV/XLSX
-- [ ] Archivo mensual D1 → R2 (Time Travel cubre los 30 últimos días)
+- [x] Cron diario de tasas (06:00 Nouméa) → KV `taux:latest` + `taux_historique` + una operación `taux.definir` por divisa en el diario, para que cada teléfono reciba las tasas del día en su siguiente pull (`app/worker/taux.ts`: BCE vía Frankfurter, secours open.er-api, EUR × 119,332). Botón «Actualiser maintenant» en `/admin`
+- [x] Cierre: plantilla HTML autónoma con el diseño de la app (`app/worker/pdf/cloture.ts`) → Browser Rendering (binding `BROWSER`, solo en producción) → PDF en R2 `clotures/AAAA/AAAA-MM-DD_<id>.pdf`, generado en segundo plano al recibir la clôture por sync; sin navegador (local, tests) se archiva el HTML. Sin email: no hay dominio con Email Routing (backlog)
+- [x] Panel `/admin` (`app/src/ecrans/Admin.tsx`, pestañas que cargan al abrirse): ventas del mes (CA, jornadas, panier moyen, por mercado, encaissements, top), jornadas con el PDF/HTML de clôture (ver, regenerar), horas del mes por vendedora (total, a pagar, pagado), exportes **CSV** de ventas y horas (separador «;», BOM: se abren en Excel; XLSX en el backlog), tasas, archivos, emparejamiento y dispositivos
+- [x] Archivo mensual D1 → R2 `archives/AAAA-MM.json` (todas las tablas, sin hashes) el día 1 (cron) o a mano desde `/admin`; descargable desde el panel
 
 **Hecho cuando**: al cerrar la jornada el PDF queda archivado y visible en el panel.
+
+**Estado**: código hecho el 2026-09-27. `app/test/automatisations.spec.ts` comprueba en el runtime de Workers: clôture sincronizada → archivo en R2 visible y descargable desde el panel (HTML sin navegador), KPIs y exportes del mes, tasas (fuente simulada) en KV + historial + diario, archivo mensual. Pendiente de Diego: comprobar en producción el primer PDF real (Browser Rendering) tras una clôture de prueba.
 
 ### Fase 6 — Migración y puesta en producción (≈ 1–2 días, antes de la reanudación del mercado)
 

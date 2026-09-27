@@ -1,5 +1,5 @@
 // Sincronización: push de las operaciones del outbox (idempotente por op_id) y pull de las de los demás
-// dispositivos desde un cursor.
+// dispositivos desde un cursor. Una clôture recibida dispara el archivo del cierre (PDF) en segundo plano.
 import { and, asc, eq, gt, ne } from 'drizzle-orm';
 import { Hono } from 'hono';
 
@@ -7,6 +7,7 @@ import { syncRequeteSchema, type SyncReponse } from '../../shared/api';
 import { opSchema, type Op } from '../../shared/ops';
 import { erreur, type AppEnv } from '../auth';
 import { schema } from '../db';
+import { archiverCloture } from '../pdf/cloture';
 import { appliquerOpD1, cursorActuel, dejaAppliquee } from '../sync/appliquer';
 
 export const sync = new Hono<AppEnv>();
@@ -22,18 +23,31 @@ sync.post('/', async (c) => {
 
   const acceptes: string[] = [];
   const refuses: { opId: string; erreur: string }[] = [];
+  const clotures: string[] = [];
   for (const op of corps.data.ops) {
     if (op.deviceId !== appareil.id) {
       refuses.push({ opId: op.opId, erreur: 'Opération d’un autre appareil' });
       continue;
     }
     try {
-      if (!(await dejaAppliquee(db, op.opId))) await appliquerOpD1(db, op);
+      if (!(await dejaAppliquee(db, op.opId))) {
+        await appliquerOpD1(db, op);
+        if (op.type === 'journee.cloturer') clotures.push(op.journeeId);
+      }
       acceptes.push(op.opId);
     } catch (e) {
       console.error('sync: opération refusée', op.type, op.opId, e);
       refuses.push({ opId: op.opId, erreur: e instanceof Error ? e.message : 'Erreur inconnue' });
     }
+  }
+
+  // El cierre se archiva después de responder: no retrasa la sincronización del teléfono.
+  for (const journeeId of clotures) {
+    c.executionCtx.waitUntil(
+      archiverCloture(c.env, db, journeeId).catch((e: unknown) =>
+        console.error('clôture: archivage impossible', journeeId, e),
+      ),
+    );
   }
 
   const rows = await db

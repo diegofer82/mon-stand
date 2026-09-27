@@ -34,6 +34,13 @@ React + TypeScript (Vite) servido por un Worker de Cloudflare (Hono) con D1, KV 
 3. En _Overview_ de la aplicación copiar el **Application Audience (AUD) Tag**; el dominio del equipo está en Zero Trust → Settings → Custom Pages (`<equipo>.cloudflareaccess.com`).
 4. Rellenar `ACCESS_TEAM_DOMAIN` (`<equipo>`) y `ACCESS_AUD` en `env.production.vars` de `wrangler.jsonc`, `npm run cf-typegen`, PR y merge. Desde entonces `/admin` pide el correo y el Worker exige el JWT; `ADMIN_TOKEN` puede borrarse (`npx wrangler secret delete ADMIN_TOKEN --env production`).
 
+## Automatizaciones (Fase 5)
+
+- **Tasas** (`worker/taux.ts`): cron `0 19 * * *` (06:00 Nouméa). Base EUR del BCE (Frankfurter; secours open.er-api) × 119,332 → KV `taux:latest`, `taux_historique` y una operación `taux.definir` por divisa en `sync_journal`: los teléfonos las reciben en su siguiente pull. `POST /api/admin/taux/actualiser` la lanza a mano.
+- **Clôture en PDF** (`worker/pdf/cloture.ts`): al recibir una operación `journee.cloturer` por sync, el Worker genera en segundo plano (`waitUntil`) el HTML del cierre y lo convierte en PDF con Browser Rendering (binding `BROWSER`, solo en `env.production`); el fichero va a R2 (`<prefijo>/clotures/AAAA/AAAA-MM-DD_<id>.pdf`) y su clave a `journees.pdf_key`. Sin binding (local, tests) se archiva el HTML. `GET /api/admin/journees/:id/pdf` lo sirve; `POST` lo regenera.
+- **Panel `/admin`** (`src/ecrans/Admin.tsx`): ventas del mes, jornadas y clôtures, horas por vendedora, exportes CSV (`/api/admin/export/ventes.csv?mois=AAAA-MM`, `heures.csv`), tasas, archivos, emparejamiento y dispositivos. Cada pestaña carga sus datos al abrirse.
+- **Archivo mensual** (`worker/archive.ts`): cron `0 20 1 * *` → R2 `<prefijo>/archives/AAAA-MM.json` con todas las tablas (sin hashes de PIN ni de token). D1 Time Travel cubre los 30 últimos días; el archivo, el resto. `POST /api/admin/archives?mois=` a mano.
+
 ## Comandos
 
 ```sh
