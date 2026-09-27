@@ -305,13 +305,13 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 - [x] **Activar R2** en el dashboard de Cloudflare (activado y verificado el 2026-09-25)
 - [x] `wrangler.jsonc` con entornos local y producción, siguiendo la convención de ControlCash: Worker `mon-stand`; D1 `mon-stand-production` (creada el 2026-09-26 en Oceanía); KV `mon-stand-taux` (tasas); R2 `mon-stand-files` (un prefijo por entorno). El entorno preview se retiró el 2026-09-27 (§0). Browser Run y cron se añaden en la Fase 5 con su código
 - [x] Migración D1 inicial (esquema §2 + validación del diseño) con Drizzle: `app/migrations/0000_init.sql`, 16 tablas, aplicada a producción el 2026-09-26
-- [ ] Workers Builds conectado al repo (directorio raíz `app/`): deploy en cada push a `main`, **sin builds de otras ramas** (una versión de preview usaría la D1 real) — pasos en [`app/README.md`](../app/README.md), a hacer en el panel de Cloudflare
+- [x] Workers Builds conectado al repo el 2026-09-27 (directorio raíz `app/`): deploy en cada push a `main`, **sin builds de otras ramas** (una versión de preview usaría la D1 real) — configuración en [`app/README.md`](../app/README.md)
 - [x] Publicación en <https://mon-stand.applis.workers.dev>: primer deploy con Wrangler el 2026-09-27; `/api/health` responde `ok` con la D1 de producción (migración `0000_init.sql`, 16 tablas). Access sobre `/admin` en la Fase 4
 - [x] CI GitHub Actions (`.github/workflows/ci.yml`): formato, lint, tipos de bindings, typecheck, tests y build en cada PR
 
 **Hecho cuando**: una página React + `/api/health` leyendo D1 están desplegadas en `workers.dev`, con deploy automático desde `main`.
 
-**Estado**: desplegada en producción el 2026-09-27. Solo falta conectar `mon-stand` a Workers Builds desde el panel de Cloudflare (requiere autorizar la app de GitHub); hasta entonces se despliega con `npm run build:production && npx wrangler deploy` desde `main`.
+**Estado**: hecha el 2026-09-27. Producción en <https://mon-stand.applis.workers.dev>, desplegada por Workers Builds en cada push a `main`.
 
 ### Fase 3 — Nueva interfaz (≈ 5–7 días)
 - [ ] Componentes del Design System

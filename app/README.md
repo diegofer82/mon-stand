@@ -53,6 +53,6 @@ Un solo Worker conectado al repositorio en el panel de Cloudflare (_mon-stand �
 | Rama de producción    | `main`                                                     |
 | Builds de otras ramas | **desactivados**: una versión de preview usaría la D1 real |
 
-Los PR se validan con la CI (`npm run check` en GitHub Actions); el despliegue solo sale de `main`. Mientras Workers Builds no esté conectado, se despliega a mano desde `main` al día: `npm run build:production && npx wrangler deploy`. Para volver a la versión anterior: _mon-stand → Deployments_ o `npx wrangler rollback`.
+Los PR se validan con la CI (`npm run check` en GitHub Actions); el despliegue solo sale de `main`. Para volver a la versión anterior: _mon-stand → Deployments_ o `npx wrangler rollback`.
 
 La página de producción es pública, pero hasta la Fase 4 (PIN de vendedora y Access en `/admin`) solo expone `/api/health`: **no se importan datos reales antes de la Fase 4**.
