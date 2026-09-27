@@ -8,6 +8,7 @@ Estas reglas se aplican a **todos los agentes** (Claude Code, Codex, Copilot, et
 
 - **v1** (producción): `index.html` en la raíz, servido por GitHub Pages desde `main`.
 - **v2** (en preparación): React + TypeScript en `app/`, desplegada en Cloudflare Workers (`*.workers.dev`) con D1, KV y R2.
+- **Archivo**: `legacy/` guarda la v1.0 y la v1.1 como referencia; no se modifica y GitHub Pages no la publica (`_config.yml`).
 - Plan de trabajo y decisiones: [`docs/PLAN_DE_TRABAJO.md`](docs/PLAN_DE_TRABAJO.md). Leerlo antes de empezar cualquier tarea de la v2.
 
 ## Reglas Git (obligatorias)
