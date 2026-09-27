@@ -1,11 +1,22 @@
 import { Hono } from 'hono';
 
 import { dateMetier, FUSEAU_METIER, heureMetier } from '../shared/dates';
+import { authAdmin, authAppareil, avecBase, erreur, type AppEnv } from './auth';
+import { admin } from './routes/admin';
+import { appareils } from './routes/appareils';
+import { auth } from './routes/auth';
+import { bootstrap } from './routes/bootstrap';
+import { sync } from './routes/sync';
 
 type EtatBase =
   { ok: true; migration: string | null; tables: number; latenceMs: number } | { ok: false; erreur: string };
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<AppEnv>();
+
+app.onError((e, c) => {
+  console.error('api: erreur non gérée', c.req.method, c.req.path, e);
+  return erreur(c, 500, 'interne', 'Erreur interne');
+});
 
 // Comprueba que el Worker responde y que D1 está migrada. Sin datos sensibles: es pública.
 app.get('/api/health', async (c) => {
@@ -15,6 +26,7 @@ app.get('/api/health', async (c) => {
     {
       statut: base.ok ? 'ok' : 'degrade',
       environnement: c.env.ENVIRONMENT,
+      version: c.env.APP_VERSION,
       dateMetier: dateMetier(maintenant),
       heureMetier: heureMetier(maintenant),
       fuseau: FUSEAU_METIER,
@@ -23,6 +35,17 @@ app.get('/api/health', async (c) => {
     base.ok ? 200 : 503,
   );
 });
+
+app.use('/api/*', avecBase);
+app.route('/api/devices', appareils);
+app.use('/api/auth/*', authAppareil);
+app.route('/api/auth', auth);
+app.use('/api/bootstrap', authAppareil);
+app.route('/api/bootstrap', bootstrap);
+app.use('/api/sync', authAppareil);
+app.route('/api/sync', sync);
+app.use('/api/admin/*', authAdmin);
+app.route('/api/admin', admin);
 
 app.all('/api/*', (c) => c.json({ erreur: 'Route inconnue' }, 404));
 

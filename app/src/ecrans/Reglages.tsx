@@ -9,9 +9,11 @@ import {
   Moon,
   Palette,
   Plus,
+  RefreshCw,
   Smartphone,
   Sun,
   Tag,
+  Unlink,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -26,13 +28,16 @@ import { Avatar, Badge } from '../composants/ui/Affichage';
 import { Bouton } from '../composants/ui/Bouton';
 import { Champ, Segments } from '../composants/ui/Saisie';
 import { Carte, Feuille, LigneListe } from '../composants/ui/Structure';
-import { changerPin, definirSetting, definirTaux, enregistrerCategorie, enregistrerVendeur } from '../db/actions';
+import { definirSetting, definirTaux, enregistrerCategorie, enregistrerVendeur } from '../db/actions';
 import { db, TABLES_DONNEES } from '../db/db';
-import { useCategories, useSetting, useTauxDetail, useVendeurs } from '../db/hooks';
+import { useCategories, useMeta, useOutboxCount, useSetting, useTauxDetail, useVendeurs } from '../db/hooks';
 import { useSession } from '../etat/session';
 import { appliquerTheme, lireTheme, type Theme } from '../etat/theme';
 import { useInstallation } from '../pwa/installation';
+import { desappairer, synchroniser } from '../sync/client';
+import { useSync } from '../sync/useSync';
 import { t } from '../textes/fr';
+import { heure } from '../utils/format';
 
 export function Reglages({ open, onClose, vendeurId }: { open: boolean; onClose: () => void; vendeurId: string }) {
   const { notifier, deconnecter } = useSession();
@@ -48,6 +53,10 @@ export function Reglages({ open, onClose, vendeurId }: { open: boolean; onClose:
   const [lieuSaisi, setLieu] = useState<string | null>(null);
   const lieu = lieuSaisi ?? lieuDefaut ?? LIEU_DEFAUT;
   const { situation, installer, reporter, reportee } = useInstallation();
+  const deviceNom = useMeta('deviceNom');
+  const enAttente = useOutboxCount();
+  const sync = useSync();
+  const [confirmerDesappairage, setConfirmerDesappairage] = useState(false);
 
   const changerTheme = (th: string) => {
     const v = th as Theme;
@@ -242,6 +251,14 @@ export function Reglages({ open, onClose, vendeurId }: { open: boolean; onClose:
 
         <Carte title={t.reglages.appareil} icon={Smartphone}>
           <div className="flex flex-col gap-2">
+            <p className="text-body font-semibold">{t.appairage.appareilNom(deviceNom ?? '—')}</p>
+            <p className="text-caption text-ink-muted">
+              {sync.derniereSync ? t.appairage.derniereSync(heure(sync.derniereSync)) : t.appairage.jamaisSync}
+              {enAttente > 0 ? ` · ${t.sync.enAttente(enAttente)}` : ''}
+            </p>
+            <Bouton variant="secondary" size="md" block icon={RefreshCw} onClick={() => void synchroniser()}>
+              {t.appairage.resynchroniser}
+            </Bouton>
             <Bouton variant="secondary" size="md" block icon={Download} onClick={() => void exporter()}>
               {t.reglages.exporter}
             </Bouton>
@@ -260,6 +277,26 @@ export function Reglages({ open, onClose, vendeurId }: { open: boolean; onClose:
             >
               {t.acces.changerVendeuse}
             </Bouton>
+            {confirmerDesappairage ? (
+              <Bouton
+                variant="danger"
+                size="md"
+                block
+                icon={Unlink}
+                disabled={enAttente > 0}
+                onClick={() => {
+                  onClose();
+                  void desappairer();
+                }}
+              >
+                {t.appairage.desappairer}
+              </Bouton>
+            ) : (
+              <Bouton variant="ghost" size="md" block icon={Unlink} onClick={() => setConfirmerDesappairage(true)}>
+                {t.appairage.desappairer}
+              </Bouton>
+            )}
+            {confirmerDesappairage && <p className="text-caption text-danger">{t.appairage.desappairerAide}</p>}
             <p className="text-center text-caption text-ink-muted">
               {t.reglages.version} {__APP_VERSION__}
             </p>
@@ -319,19 +356,13 @@ function FormulaireVendeur({ vendeur, onClose, vendeurId }: Omit<EditionVendeurP
       }
     }
     const id = vendeur?.id ?? `vend_${crypto.randomUUID()}`;
-    if (!vendeur) {
-      const pinSalt = genererSel();
-      await db.vendeurs.put({
-        id,
-        prenom: prenom.trim(),
-        tauxHoraireCfp: taux,
-        actif: true,
-        pinSalt,
-        pinHash: await hacherPin(pin, pinSalt),
-      });
-    }
-    await enregistrerVendeur({ vendeurId }, { id, prenom: prenom.trim(), tauxHoraireCfp: taux, actif });
-    if (vendeur && pin) await changerPin(id, pin);
+    // El hash del PIN viaja en la operación (nunca el PIN); sin PIN nuevo, el servidor conserva el actual.
+    const pinSalt = pin ? genererSel() : undefined;
+    const pinHash = pin && pinSalt ? await hacherPin(pin, pinSalt) : undefined;
+    await enregistrerVendeur(
+      { vendeurId },
+      { id, prenom: prenom.trim(), tauxHoraireCfp: taux, actif, pinHash, pinSalt },
+    );
     notifier({ message: pin && vendeur ? t.reglages.pinModifie : t.reglages.enregistre, duree: 1500 });
     onClose();
   };

@@ -15,10 +15,24 @@ React + TypeScript (Vite) servido por un Worker de Cloudflare (Hono) con D1, KV 
 
 ## Cómo funciona la interfaz (Fase 3)
 
-- **Offline-first**: los datos viven en IndexedDB (`src/db/db.ts`). Cada acción de la vendedora (`src/db/actions.ts`) construye una **operación** con UUID (`shared/ops.ts`, validada con zod), la aplica en local (`src/db/appliquer.ts`) y la deja en el **outbox** para el servidor (Fase 4). El stock es la suma de movimientos; una venta anulada deja movimientos compensatorios.
+- **Offline-first**: los datos viven en IndexedDB (`src/db/db.ts`). Cada acción de la vendedora (`src/db/actions.ts`) construye una **operación** con UUID (`shared/ops.ts`, validada con zod), la aplica en local (`src/db/appliquer.ts`) y la deja en el **outbox**. El stock es la suma de movimientos; una venta anulada deja movimientos compensatorios.
 - **Lecturas reactivas** con `dexie-react-hooks` (`src/db/hooks.ts`): las pantallas se repintan solas.
-- **Teléfono vacío**: `src/db/semence.ts` carga el catálogo v1, las tasas por defecto y una vendedora «Vendeuse» con PIN `1234` (hash PBKDF2 guardado en el teléfono). La Fase 4 lo sustituye por el bootstrap del servidor.
 - **PWA**: `vite-plugin-pwa` precarga toda la app; la nueva versión se activa en la siguiente apertura, nunca en mitad de una venta.
+
+## Sincronización y acceso (Fase 4)
+
+- **Emparejamiento**: el propietario genera en `/admin` un código de 8 caracteres (15 min, un solo uso); el teléfono lo introduce al abrir la app (`POST /api/devices/pair`) y recibe un token (guardado como SHA-256 en `devices`). Todo lo demás lleva `Authorization: Bearer <token>`. Revocar un teléfono desde `/admin` invalida su token; sus operaciones ya recibidas se conservan.
+- **Bootstrap** (`GET /api/bootstrap`): instantánea completa (catálogo, vendedoras con hash y sal del PIN, tasas, ajustes, stock actual, jornadas de 90 días con ventas y conteos, sesiones) y el cursor del diario. En una D1 vacía siembra el catálogo v1 y la vendedora «Vendeuse» con PIN `1234` (`worker/semence.ts`; cambiarlo en Réglages).
+- **Sync** (`POST /api/sync`, `src/sync/client.ts`): push del outbox (`sync_ops` hace idempotente cada `op_id`; el Worker aplica cada operación en un `batch` atómico, `worker/sync/appliquer.ts`) y pull de las operaciones de los demás dispositivos desde el cursor (`sync_journal`, por páginas). Se dispara al arrancar, al volver la red, al volver a primer plano, tras cada acción y cada minuto. Solo un 2xx retira una entrada del outbox; una operación rechazada tres veces deja de reenviarse y queda visible como error.
+- **PIN**: `POST /api/auth/pin` verifica el hash PBKDF2 en el servidor con 5 intentos por minuto y por teléfono (`auth_tentatives`, 429 + `Retry-After`). Sin red, el teléfono verifica con el hash que trajo el bootstrap. El cambio de PIN viaja como hash en una operación `vendeur.upsert`; el PIN nunca sale del teclado.
+- **Administración** (`/admin`, `/api/admin/*`): Cloudflare Access (JWT `Cf-Access-Jwt-Assertion` validado con el JWKS del equipo) cuando `ACCESS_TEAM_DOMAIN` y `ACCESS_AUD` están definidos en `wrangler.jsonc`; si no, el jeton secreto `ADMIN_TOKEN` (`npx wrangler secret put ADMIN_TOKEN --env production`) pegado en la página `/admin`. En local, `ADMIN_SANS_AUTH = "true"`. Sin nada configurado en producción, `/api/admin` responde 503.
+
+### Configurar Cloudflare Access (pendiente, lo hace el propietario)
+
+1. Zero Trust → Access → Applications → _Add an application_ → **Self-hosted**.
+2. Dominio `mon-stand.applis.workers.dev`, con dos rutas: `/admin` y `/api/admin`. Política _Allow_ con la dirección de correo del propietario (One-time PIN o el proveedor que prefiera).
+3. En _Overview_ de la aplicación copiar el **Application Audience (AUD) Tag**; el dominio del equipo está en Zero Trust → Settings → Custom Pages (`<equipo>.cloudflareaccess.com`).
+4. Rellenar `ACCESS_TEAM_DOMAIN` (`<equipo>`) y `ACCESS_AUD` en `env.production.vars` de `wrangler.jsonc`, `npm run cf-typegen`, PR y merge. Desde entonces `/admin` pide el correo y el Worker exige el JWT; `ADMIN_TOKEN` puede borrarse (`npx wrangler secret delete ADMIN_TOKEN --env production`).
 
 ## Comandos
 
@@ -63,4 +77,4 @@ Un solo Worker conectado al repositorio en el panel de Cloudflare (_mon-stand �
 
 Los PR se validan con la CI (`npm run check` en GitHub Actions); el despliegue solo sale de `main`. Para volver a la versión anterior: _mon-stand → Deployments_ o `npx wrangler rollback`.
 
-La página de producción es pública, pero hasta la Fase 4 (PIN de vendedora y Access en `/admin`) solo expone `/api/health`: **no se importan datos reales antes de la Fase 4**.
+La página de producción es pública, pero sin emparejar un teléfono no hay datos: solo `/api/health` responde sin token. Hasta que Diego pruebe el flujo en producción con datos de prueba y los borre, **no se importan datos reales** (Fase 6).

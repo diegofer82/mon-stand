@@ -134,3 +134,8 @@ export function useOutboxCount(): number {
 export function dateDuJour(): string {
   return dateMetier(new Date());
 }
+
+/** Valor de la tabla meta (undefined mientras carga, null si no existe). */
+export function useMeta(key: string): string | null | undefined {
+  return useLiveQuery(async () => (await db.meta.get(key))?.value ?? null, [key]);
+}

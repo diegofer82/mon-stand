@@ -321,10 +321,18 @@ export async function enregistrerVendeur(
   await emettreOp({ ...env, type: 'vendeur.upsert', vendeur });
 }
 
-/** El PIN no viaja por el outbox: se guarda hasheado en el teléfono (la Fase 4 lo enviará al servidor por su ruta). */
-export async function changerPin(vendeurId: string, pin: string): Promise<void> {
+/** Cambio de PIN: viaja el hash PBKDF2 (nunca el PIN) en una operación vendeur.upsert; el servidor lo guarda. */
+export async function changerPin(ctx: Contexte | null, vendeurId: string, pin: string): Promise<void> {
   const v = await db.vendeurs.get(vendeurId);
   if (!v) return;
   const pinSalt = genererSel();
-  await db.vendeurs.put({ ...v, pinSalt, pinHash: await hacherPin(pin, pinSalt) });
+  const pinHash = await hacherPin(pin, pinSalt);
+  await enregistrerVendeur(ctx, {
+    id: v.id,
+    prenom: v.prenom,
+    tauxHoraireCfp: v.tauxHoraireCfp,
+    actif: v.actif,
+    pinHash,
+    pinSalt,
+  });
 }

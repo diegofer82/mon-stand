@@ -178,7 +178,7 @@ export const comptagesCaisse = sqliteTable(
     journeeId: text('journee_id')
       .notNull()
       .references(() => journees.id),
-    devise: text('devise', { enum: MODES_PAIEMENT }).notNull(),
+    devise: text('devise', { enum: DEVISES }).notNull(),
     attendu: real('attendu').notNull(),
     compte: real('compte').notNull(),
     ecart: real('ecart').notNull(),
@@ -248,3 +248,37 @@ export const journeeFonds = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.journeeId, t.devise] })],
 );
+
+// ---- Fase 4: sincronización y acceso ----
+
+// Diario de operaciones aplicadas, en orden de llegada: el pull de un teléfono lee las operaciones
+// de los demás dispositivos a partir de su cursor (seq). payload = la operación completa en JSON.
+export const syncJournal = sqliteTable(
+  'sync_journal',
+  {
+    seq: integer('seq').primaryKey({ autoIncrement: true }),
+    opId: text('op_id').notNull().unique(),
+    deviceId: text('device_id').notNull(),
+    vendeurId: text('vendeur_id'),
+    type: text('type').notNull(),
+    payload: text('payload').notNull(),
+    receivedAt: text('received_at').notNull().default(now),
+  },
+  (t) => [index('sync_journal_device_idx').on(t.deviceId)],
+);
+
+// Código de emparejamiento generado desde /admin: 8 caracteres, caduca a los 15 minutos, un solo uso.
+export const pairingCodes = sqliteTable('pairing_codes', {
+  code: text('code').primaryKey(),
+  createdAt: text('created_at').notNull().default(now),
+  expiresAt: text('expires_at').notNull(),
+  usedAt: text('used_at'),
+  deviceId: text('device_id').references(() => devices.id),
+});
+
+// Intentos de PIN por dispositivo y vendedora (rate limiting): ventana deslizante de un minuto.
+export const authTentatives = sqliteTable('auth_tentatives', {
+  cle: text('cle').primaryKey(),
+  essais: integer('essais').notNull().default(0),
+  fenetreDebut: text('fenetre_debut').notNull(),
+});

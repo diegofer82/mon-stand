@@ -81,4 +81,5 @@ export async function emettreOp(op: Op): Promise<void> {
     await appliquerOp(op);
     await db.outbox.put({ opId: op.opId, op, createdAt: op.ts, tentatives: 0, erreur: null });
   });
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('mon-stand:outbox'));
 }

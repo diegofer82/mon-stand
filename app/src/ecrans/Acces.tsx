@@ -1,15 +1,51 @@
 // Acceso: selector de vendedora (avatares) + teclado PIN, sobre `night`. Verificación local del hash (sin red).
 import { useEffect, useState } from 'react';
 
+import type { Vendeur } from '../../shared/domaine/types';
 import { verifierPin } from '../../shared/pin';
 import { Avatar, Marque } from '../composants/ui/Affichage';
 import { ClavierNumerique, PointsPin } from '../composants/ui/Saisie';
 import { useVendeurs } from '../db/hooks';
 import { useSession } from '../etat/session';
+import { ErreurApiClient, ErreurReseau, tokenAppareil } from '../sync/client';
 import { t } from '../textes/fr';
 
 const MAX_ESSAIS = 5;
 const BLOCAGE_MS = 60_000;
+
+interface ResultatPin {
+  ok: boolean;
+  bloque?: boolean;
+  message?: string;
+}
+
+/** Con red, el servidor verifica (y cuenta los intentos); sin red, el hash guardado en el teléfono. */
+async function verifierPinServeurOuLocal(pin: string, vendeur: Vendeur): Promise<ResultatPin> {
+  const token = await tokenAppareil();
+  if (token && navigator.onLine) {
+    try {
+      const r = await fetch('/api/auth/pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ vendeurId: vendeur.id, pin }),
+      });
+      if (r.ok) return { ok: true };
+      const corps = (await r.json().catch(() => ({}))) as { erreur?: { code?: string; message?: string } };
+      if (r.status === 401 || r.status === 429) {
+        return {
+          ok: false,
+          bloque: r.status === 429 || corps.erreur?.code === 'trop_d_essais',
+          message: corps.erreur?.message,
+        };
+      }
+      throw new ErreurApiClient(r.status, 'inconnu', corps.erreur?.message ?? 'Erreur');
+    } catch (e) {
+      if (!(e instanceof ErreurReseau) && !(e instanceof TypeError)) console.warn('pin: serveur indisponible', e);
+      // Sin respuesta útil del servidor: verificación local.
+    }
+  }
+  return { ok: await verifierPin(pin, vendeur.pinSalt, vendeur.pinHash) };
+}
 
 export function Acces() {
   const vendeurs = useVendeurs().filter((v) => v.actif);
@@ -51,20 +87,32 @@ export function Acces() {
   const verifier = async (saisie: string) => {
     if (!vendeur) return;
     setVerification(true);
-    const ok = await verifierPin(saisie, vendeur.pinSalt, vendeur.pinHash);
-    setVerification(false);
-    if (ok) {
-      connecter(vendeur.id);
-      return;
-    }
-    const n = essais + 1;
-    setEssais(n);
-    setPin('');
-    if (n >= MAX_ESSAIS) {
-      setBloque(true);
-      setErreur(t.acces.bloque);
-    } else {
-      setErreur(`${t.acces.pinIncorrect} ${t.acces.essaisRestants(MAX_ESSAIS - n)}`);
+    try {
+      const resultat = await verifierPinServeurOuLocal(saisie, vendeur);
+      if (resultat.ok) {
+        connecter(vendeur.id);
+        return;
+      }
+      setPin('');
+      if (resultat.bloque) {
+        setBloque(true);
+        setErreur(resultat.message ?? t.acces.bloque);
+        return;
+      }
+      if (resultat.message) {
+        setErreur(resultat.message);
+        return;
+      }
+      const n = essais + 1;
+      setEssais(n);
+      if (n >= MAX_ESSAIS) {
+        setBloque(true);
+        setErreur(t.acces.bloque);
+      } else {
+        setErreur(`${t.acces.pinIncorrect} ${t.acces.essaisRestants(MAX_ESSAIS - n)}`);
+      }
+    } finally {
+      setVerification(false);
     }
   };
 
