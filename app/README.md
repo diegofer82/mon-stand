@@ -41,6 +41,19 @@ React + TypeScript (Vite) servido por un Worker de Cloudflare (Hono) con D1, KV 
 - **Panel `/admin`** (`src/ecrans/Admin.tsx`): ventas del mes, jornadas y clôtures, horas por vendedora, exportes CSV (`/api/admin/export/ventes.csv?mois=AAAA-MM`, `heures.csv`), tasas, archivos, emparejamiento y dispositivos. Cada pestaña carga sus datos al abrirse.
 - **Archivo mensual** (`worker/archive.ts`): cron `0 20 1 * *` → R2 `<prefijo>/archives/AAAA-MM.json` con todas las tablas (sin hashes de PIN ni de token). D1 Time Travel cubre los 30 últimos días; el archivo, el resto. `POST /api/admin/archives?mois=` a mano.
 
+## Migración desde la v1 (Fase 6)
+
+El export completo del teléfono (JSON, botón «Export complet» de la v1.4+) es la única fuente. **Nunca entra en el repo**: guardarlo fuera (por ejemplo `~/.mon-stand/`).
+
+1. **Ensayo** en producción con datos de prueba: código en `/admin` → Appareils, emparejar el teléfono, jornada simulada, clôture, PDF visible en Journées.
+2. **Copia de seguridad** de la D1: `npx wrangler d1 export mon-stand-production --remote --env production --output ~/.mon-stand/avant-import.sql`.
+3. **Purga** de los datos de prueba: `npx wrangler d1 execute mon-stand-production --remote --env production --file scripts/purger-production.sql` (los teléfonos emparejados se conservan), luego `… --file scripts/verifier-vide.sql`: todo a cero salvo `devices`.
+4. **Importación**: `node scripts/importer-v1.mjs ~/.mon-stand/export.json --sortie ~/.mon-stand/import.sql` (informe por cierre: CA calculado vs. `totalEncaisse` de la v1, avisos) y `npx wrangler d1 execute mon-stand-production --remote --env production --file ~/.mon-stand/import.sql`. Es idempotente: se puede repetir tras una corrección.
+5. **Verificación**: en `/admin` (Journées, Heures, Ventes del mes) y en el teléfono tras Réglages → Désappairer y volver a emparejar (el bootstrap trae los datos importados): 26 artículos y su stock, los 4 cierres con su CA y reparto por divisa, las sesiones.
+6. La vendedora cambia el PIN (`1234`) en Réglages.
+
+Reglas del importador (`shared/import-v1.ts`, test `test/import-v1.spec.ts` con `test/fixtures/export-v1-synthetique.json`): ventas v1.4/v1.5 con `montantDevise`/`totalDevise`/`tauxCFP`; ventas v1.3 en divisa (sin tasa) acreditadas al total y avisadas; fecha de cada cierre recalculada en Nouméa desde `clotureAt`; stock = cantidad del export (un movimiento `inventaire` por artículo); ventas sin cierre → jornada abierta «en cours».
+
 ## Comandos
 
 ```sh
