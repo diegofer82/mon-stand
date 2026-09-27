@@ -63,6 +63,11 @@
       ],
       "kv_namespaces": [{ "binding": "TAUX", "id": "e76bf9358d74495c9b55af5110c7ba99" }],
       "r2_buckets": [{ "binding": "FILES", "bucket_name": "mon-stand-files" }],
+      // Browser Rendering (incluido en Workers Paid): PDF de clôture. Solo en producción; en local se archiva el HTML.
+      "browser": { "binding": "BROWSER" },
+      // Cron (en UTC): tasas cada día a las 06:00 de Nouméa (19:00 UTC de la víspera) y archivo del mes
+      // anterior cada día 1 a las 20:00 UTC (el 2 a las 07:00 en Nouméa, con el mes ya cerrado).
+      "triggers": { "crons": ["0 19 * * *", "0 20 1 * *"] },
     },
   },
 }

@@ -1,12 +1,15 @@
 import { Hono } from 'hono';
 
 import { dateMetier, FUSEAU_METIER, heureMetier } from '../shared/dates';
+import { archiverMois, moisPrecedent } from './archive';
 import { authAdmin, authAppareil, avecBase, erreur, type AppEnv } from './auth';
+import { baseDe } from './db';
 import { admin } from './routes/admin';
 import { appareils } from './routes/appareils';
 import { auth } from './routes/auth';
 import { bootstrap } from './routes/bootstrap';
 import { sync } from './routes/sync';
+import { actualiserTaux } from './taux';
 
 type EtatBase =
   { ok: true; migration: string | null; tables: number; latenceMs: number } | { ok: false; erreur: string };
@@ -67,4 +70,24 @@ async function etatBase(db: D1Database): Promise<EtatBase> {
   }
 }
 
-export default app;
+/** Cron (wrangler.jsonc → triggers.crons): tasas diarias y archivo mensual. */
+export function scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): void {
+  const db = baseDe(env.DB);
+  const tache = controller.cron === '0 20 1 * *' ? 'archive' : 'taux';
+  console.log('cron', controller.cron, tache);
+  if (tache === 'archive') {
+    ctx.waitUntil(
+      archiverMois(env, db, moisPrecedent(new Date(controller.scheduledTime)))
+        .then((r) => console.log('archive', r.cle, r.lignes, 'lignes'))
+        .catch((e: unknown) => console.error('archive: échec', e)),
+    );
+  } else {
+    ctx.waitUntil(
+      actualiserTaux(env, db)
+        .then((t) => console.log('taux', t.date, t.source, JSON.stringify(t.taux)))
+        .catch((e: unknown) => console.error('taux: échec', e)),
+    );
+  }
+}
+
+export default { fetch: app.fetch, scheduled };
