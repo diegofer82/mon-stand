@@ -103,12 +103,13 @@ article_prix      article_id, devise, prix, updated_at               ← precio 
 stock_mouvements  id, article_id, delta, motif, vente_id?, vendeur_id, device_id, ts
 journees          id, date_locale, lieu, vendeur_id, fond_caisse_cfp?, ouverte_at, cloturee_at?,
                   commentaire_cloture?, pdf_key?
+journee_fonds     journee_id, devise, montant                    ← fondo de caja por divisa (Fase 3)
 ventes            id, journee_id, vendeur_id, device_id, ts, sous_total_cfp,
                   remise_panier_cfp, remise_encaissement_cfp, total_cfp, annulee_at?
 vente_lignes      id, vente_id, article_id, nom_snapshot, qty, prix_unit_cfp, total_cfp
 vente_paiements   id, vente_id, devise (CFP|AUD|USD|EUR|NZD|JPY|TPE),
                   montant_devise, total_devise, taux_cfp, montant_cfp,  ← permite pago mixto
-                  rendu_montant?, rendu_devise?                         ← monnaie devuelta (AUD o CFP)
+                  rendu_montant?, rendu_devise?                         ← monnaie devuelta (en la divisa del pago)
 comptages_caisse  id, journee_id, devise, attendu, compte, ecart
 sessions_travail  id, vendeur_id, debut, fin?, duree_min, commentaire, payee_at?
 paiements_heures  id, vendeur_id, montant_cfp, date, note
@@ -235,22 +236,24 @@ Decisiones tomadas en el diseño:
 | Marca | No hay logotipo: nombre en Playfair + hoja Lucide (heredera del 🌿) |
 | Orden de la caja («Tout») | **Los más vendidos primero**: unidades vendidas en los últimos 30 días (`vente_lignes`), empate por nombre; agotados al final. Se calcula al abrir la jornada y no cambia durante el día, para que las fichas no se muevan bajo el dedo. Las categorías conservan el orden del stock |
 
-Impacto en el modelo de datos (a confirmar con la validación):
+Impacto en el modelo de datos (confirmado por las respuestas de la vendedora del 2026-09-27):
 
-- `articles.emoji` (opcional): la cuadrícula de la caja necesita distinguir los artículos de una misma categoría hasta que haya fotos.
-- `journees.fond_caisse_cfp`: el conteo de caja compara con «fondo de caja + efectivo neto»; hay que saber con cuánto cambio empieza el día.
-- Monnaie de un pago en divisa: registrar si se devolvió en la divisa o en CFP (cambia el esperado del conteo por moneda).
+- `articles.emoji` (opcional): la cuadrícula de la caja distingue los artículos por su emoji. A la vendedora le basta; las fotos (`photo_key`) quedan para más adelante.
+- **Fondo de caja por divisa**: la jornada empieza con **1 000 CFP y 100 AUD**, y el conteo compara cada divisa con «fondo + efectivo neto». `journees.fond_caisse_cfp` no basta: la Fase 3 añade la tabla `journee_fonds` (journee_id, devise, montant) en una migración nueva y deja de usar esa columna. 1 000 CFP y 100 AUD se proponen por defecto al abrir la jornada.
+- Monnaie de un pago en divisa: se devuelve **en la misma divisa** (AUD → AUD), así que `rendu_devise` = divisa del pago y el esperado del conteo AUD = fondo AUD + AUD recibidos − AUD devueltos.
 - Artículos con precio 0 (Bourgoir, Boîte déco) no aparecen en la caja; el stock los marca «Prix à fixer».
 
-Preguntas para la vendedora (también en una nota del canvas; no bloquean el diseño, hay que responderlas antes de la Fase 3):
+Respuestas de la vendedora (2026-09-27):
 
-1. La monnaie de un pago en AUD: ¿se devuelve en AUD o en CFP?
-2. ¿Los emoji de los artículos le sirven, o mejor fotos?
-3. ¿Bastan los billetes propuestos (compte juste, billete siguiente, otro importe)?
-4. ¿Con cuánto fondo de caja en CFP empieza el día?
-5. Pago mixto: ¿50 AUD cuentan al tipo del día (3 689 CFP)?
-6. ¿Es práctico mantener pulsado para Commencer / Terminer?
-7. ¿El modo claro se lee bien a pleno sol?
+| # | Pregunta | Respuesta | Consecuencia |
+|---|---|---|---|
+| 1 | La monnaie de un pago en AUD: ¿en AUD o en CFP? | En AUD | Monnaie en la divisa del pago (arriba) |
+| 2 | ¿Emoji o fotos para los artículos? | Los emoji están bien | Sin fotos por ahora |
+| 3 | ¿Bastan los billetes propuestos (compte juste, billete siguiente, otro importe)? | Sí | Cobro sin cambios |
+| 4 | ¿Con cuánto fondo de caja empieza el día? | 100 AUD y 1 000 CFP | Fondo por divisa (arriba) |
+| 5 | Pago mixto: ¿50 AUD cuentan al tipo del día (3 689 CFP)? | No, es muy raro | El pago mixto queda como opción secundaria («Payer le reste autrement»), al tipo del día, sin más reglas |
+| 6 | ¿Es práctico mantener pulsado para Commencer / Terminer? | Sí | Se mantiene |
+| 7 | ¿El modo claro se lee bien a pleno sol? | Sí: vende a la sombra, dentro de la gare maritime | Claro por defecto; no hace falta un modo de alto contraste |
 
 ---
 
@@ -290,7 +293,7 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 
 **Hecho cuando**: pantallas validadas por el propietario y la vendedora.
 
-**Estado**: hecha. Pantallas validadas el 2026-09-26 (enlaces en §4) y tokens en `app/src/styles/app.css`. Quedan las respuestas de la vendedora a las preguntas de §4, necesarias antes de la Fase 3.
+**Estado**: hecha. Pantallas validadas el 2026-09-26 (enlaces en §4) y tokens en `app/src/styles/app.css`. Respuestas de la vendedora recibidas el 2026-09-27 (§4).
 
 ### Fase 2 — Fundaciones Cloudflare (≈ 2 días)
 - [x] Proyecto `app/`: Vite + React + TS + `@cloudflare/vite-plugin` + Hono; ESLint, Prettier, Vitest (suite Worker en el runtime real contra D1 migrada + suite de dominio)
@@ -307,6 +310,7 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 
 ### Fase 3 — Nueva interfaz (≈ 5–7 días)
 - [ ] Componentes del Design System
+- [ ] Migración `0001`: fondo de caja por divisa (`journee_fonds`, §4)
 - [ ] `src/domain/`: lógica de negocio pura con tests — promo 2ª unidad, remises, monnaie, precios en divisa calculados/manuales y redondeos (`arrondirDevise`, v1.5), redondeo de horas a 30 min, totales de cierre. Primero tests que reproduzcan el comportamiento v1 (las 12 ventas en divisa del export sirven de casos), luego las correcciones
 - [ ] Pantallas en orden de valor: Caja → Cobro → Stock → Cierre → Horas → Ajustes
 - [ ] PWA: manifest, iconos, service worker, Dexie, outbox; todo funciona sin red
