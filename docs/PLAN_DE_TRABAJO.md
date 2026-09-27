@@ -135,8 +135,8 @@ sync_ops          op_id, device_id, received_at                  ← idempotenci
 
 ### Stack
 
-- **Front**: Vite + React + TypeScript (strict), Tailwind CSS v4 con los tokens del Design System, Radix UI (diálogos, bottom sheets accesibles), iconos Lucide, TanStack Query.
-- **Offline**: `vite-plugin-pwa` (Workbox) + Dexie (IndexedDB).
+- **Front**: Vite + React + TypeScript (strict), Tailwind CSS v4 con los tokens del Design System, iconos Lucide. Sin Radix ni TanStack Query (decidido en la Fase 3): los bottom sheets van sobre `<dialog>` nativo (foco atrapado, Escape, scrim) y los datos se leen de IndexedDB con `dexie-react-hooks`, así que una librería de caché de red no aporta nada.
+- **Offline**: `vite-plugin-pwa` (Workbox, toda la app precargada) + Dexie (IndexedDB) con un outbox de operaciones (`shared/ops.ts`, contrato zod compartido con el Worker).
 - **Worker**: Hono + zod, Drizzle ORM (esquema y migraciones D1).
 - **Tooling**: `@cloudflare/vite-plugin` (front + Worker en un solo proyecto, D1/KV/R2 locales en dev), Wrangler.
 - **Tests**: Vitest (lógica de negocio), `@cloudflare/vitest-pool-workers` (API), Playwright (flujos: venta, cobro, cierre, modo avión).
@@ -315,14 +315,16 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 **Estado**: hecha el 2026-09-27. Producción en <https://mon-stand.applis.workers.dev>, desplegada por Workers Builds en cada push a `main`.
 
 ### Fase 3 — Nueva interfaz (≈ 5–7 días)
-- [ ] Componentes del Design System
-- [ ] Migración `0001`: fondo de caja por divisa (`journee_fonds`, §4)
-- [ ] `src/domain/`: lógica de negocio pura con tests — promo 2ª unidad, remises, monnaie, precios en divisa calculados/manuales y redondeos (`arrondirDevise`, v1.5), redondeo de horas a 30 min, totales de cierre. Primero tests que reproduzcan el comportamiento v1 (las 12 ventas en divisa del export sirven de casos), luego las correcciones
-- [ ] Pantallas en orden de valor: Caja → Cobro → Stock → Cierre → Horas → Ajustes
-- [ ] PWA: manifest, iconos, service worker, Dexie, outbox; todo funciona sin red
-- [ ] Textos centralizados (FR por defecto) para poder añadir EN más adelante
+- [x] Componentes del Design System: `app/src/composants/ui/` (botón y botón mantenido, importes, etiquetas, badges, KPI, chips, campos, teclado numérico, PIN, barra de app, pestañas, bottom sheet sobre `<dialog>`, toast, estado de sync, avatar, tarjetas, tuile de artículo, barra de caja, botones de divisa y billete, monnaie, línea de conteo)
+- [x] Migración `0001_journee_fonds`: fondo de caja por divisa (`journee_fonds`, §4); `journees.fond_caisse_cfp` deja de usarse
+- [x] `app/shared/domaine/`: lógica de negocio pura con tests (45) — promo 2ª unidad, remises, monnaie en la divisa del pago, pago mixto, precios en divisa calculados/manuales y redondeos (`arrondirDevise`, v1.5), billetes sugeridos, redondeo de horas a 30 min, stock como suma de movimientos, orden de la caja, totales de cierre y esperado del conteo por divisa. Los casos reproducen las reglas v1.4/v1.5 (`calcLT`, `calcTotalDevise`, `validerVente`); las 12 ventas reales del export se contrastarán al importar (Fase 6)
+- [x] Pantallas: Acceso (PIN verificado con PBKDF2 en el teléfono) → Caja → Cobro → Stock (+ ficha) → Cierre (+ conteo, historial) → Horas → Réglages (vendedoras, tasas, categorías, lugar, tema, instalación, export)
+- [x] PWA: manifest, iconos generados sin dependencias (`app/scripts/icones.mjs`), service worker (toda la app precargada), Dexie, outbox (cada acción es una operación con UUID aplicada en local y encolada). Sin servidor todavía: el outbox se vacía en la Fase 4
+- [x] Textos centralizados en `app/src/textes/fr.ts`
 
 **Hecho cuando**: una venta completa y un cierre funcionan en modo avión en iPhone y Android (PWA instalada desde la URL de producción, con datos de prueba).
+
+**Estado**: código hecho el 2026-09-27 y probado en el navegador (PIN, apertura de jornada con fondo 1 000 CFP + 100 AUD, venta de 5 500 CFP cobrada con 100 AUD → monnaie 30 AUD, conteo con écart, clôture e historial). Pendiente de Diego: instalar la PWA desde producción en iPhone y Android y repetir el flujo en modo avión. Datos de partida en un teléfono vacío: catálogo v1 y una vendedora «Vendeuse» con PIN `1234` (cambiable en Réglages), que la Fase 4 sustituye por el bootstrap del servidor.
 
 ### Fase 4 — API, sincronización y acceso (≈ 3–4 días)
 - [ ] Rutas Hono + validación zod (§2)

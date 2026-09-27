@@ -4,13 +4,21 @@ React + TypeScript (Vite) servido por un Worker de Cloudflare (Hono) con D1, KV 
 
 ## Estructura
 
-| Carpeta       | Contenido                                                                                                 |
-| ------------- | --------------------------------------------------------------------------------------------------------- |
-| `src/`        | Interfaz React. Estilos: Tailwind v4 con los tokens del Design System (`src/styles/app.css`)              |
-| `worker/`     | API Hono (`/api/*`) y esquema Drizzle de D1 (`worker/db/schema.ts`)                                       |
-| `shared/`     | Lógica de negocio pura compartida por la interfaz y el Worker (importes, fechas de Nouméa), con sus tests |
-| `migrations/` | SQL de D1 generado por Drizzle; Wrangler lo aplica                                                        |
-| `test/`       | Tests del Worker en el runtime real de Workers, contra una D1 migrada                                     |
+| Carpeta       | Contenido                                                                                                                                                                                                                     |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/`        | Interfaz React: `ecrans/` (pantallas), `composants/ui/` (Design System), `db/` (Dexie, acciones, outbox), `etat/`, `pwa/`, `textes/fr.ts`. Estilos: Tailwind v4 con los tokens del Design System (`src/styles/app.css`)       |
+| `worker/`     | API Hono (`/api/*`) y esquema Drizzle de D1 (`worker/db/schema.ts`)                                                                                                                                                           |
+| `shared/`     | Lógica de negocio pura compartida por la interfaz y el Worker: `domaine/` (panier, encaissement, heures, stock, cloture, catálogo), importes, fechas de Nouméa, tasas, PIN, contrato de operaciones (`ops.ts`), con sus tests |
+| `migrations/` | SQL de D1 generado por Drizzle; Wrangler lo aplica                                                                                                                                                                            |
+| `scripts/`    | Utilidades Node sin dependencias: `icones.mjs` genera los PNG de la PWA (`public/icons/`, `apple-touch-icon.png`)                                                                                                             |
+| `test/`       | Tests del Worker en el runtime real de Workers, contra una D1 migrada                                                                                                                                                         |
+
+## Cómo funciona la interfaz (Fase 3)
+
+- **Offline-first**: los datos viven en IndexedDB (`src/db/db.ts`). Cada acción de la vendedora (`src/db/actions.ts`) construye una **operación** con UUID (`shared/ops.ts`, validada con zod), la aplica en local (`src/db/appliquer.ts`) y la deja en el **outbox** para el servidor (Fase 4). El stock es la suma de movimientos; una venta anulada deja movimientos compensatorios.
+- **Lecturas reactivas** con `dexie-react-hooks` (`src/db/hooks.ts`): las pantallas se repintan solas.
+- **Teléfono vacío**: `src/db/semence.ts` carga el catálogo v1, las tasas por defecto y una vendedora «Vendeuse» con PIN `1234` (hash PBKDF2 guardado en el teléfono). La Fase 4 lo sustituye por el bootstrap del servidor.
+- **PWA**: `vite-plugin-pwa` precarga toda la app; la nueva versión se activa en la siguiente apertura, nunca en mitad de una venta.
 
 ## Comandos
 

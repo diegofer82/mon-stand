@@ -19,8 +19,8 @@ describe('GET /api/health', () => {
     expect(body.fuseau).toBe('Pacific/Noumea');
     expect(body.dateMetier).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(body.base.ok).toBe(true);
-    expect(body.base.migration).toMatch(/^0000_/);
-    expect(body.base.tables).toBe(16);
+    expect(body.base.migration).toMatch(/^0001_/);
+    expect(body.base.tables).toBe(17);
   });
 
   it('las demás rutas de la API responden 404 en JSON', async () => {

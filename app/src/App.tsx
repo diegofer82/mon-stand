@@ -1,127 +1,142 @@
-import { CircleAlert, CircleCheck, Database, Leaf, LoaderCircle, Server } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+// Coquille: acceso → 4 pestañas (Caisse · Stock · Heures · Clôture), réglages en el menú del avatar,
+// estado de red y toasts. Los datos viven en IndexedDB y se leen de forma reactiva.
+import { Clock, CloudOff, Package, ReceiptText, Settings, ShoppingBasket } from 'lucide-react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 
-interface Health {
-  statut: 'ok' | 'degrade';
-  environnement: 'local' | 'production';
-  dateMetier: string;
-  heureMetier: string;
-  base: { ok: true; migration: string | null; tables: number; latenceMs: number } | { ok: false; erreur: string };
-}
+import { dateMetier } from '../shared/dates';
+import { Avatar, Banniere } from './composants/ui/Affichage';
+import { BarreApp, BarreOnglets, StatutSync, Toast } from './composants/ui/Structure';
+import { useJourneeOuverte, useOutboxCount, useVendeur } from './db/hooks';
+import { semerSiVide } from './db/semence';
+import { SessionProvider, useSession } from './etat/session';
+import { appliquerTheme, lireTheme } from './etat/theme';
+import { Acces } from './ecrans/Acces';
+import { Caisse } from './ecrans/Caisse';
+import { t } from './textes/fr';
+import { dateCourte } from './utils/format';
 
-type Etat = { phase: 'chargement' } | { phase: 'ok'; health: Health } | { phase: 'erreur'; message: string };
+const Stock = lazy(() => import('./ecrans/Stock').then((m) => ({ default: m.Stock })));
+const Heures = lazy(() => import('./ecrans/Heures').then((m) => ({ default: m.Heures })));
+const Cloture = lazy(() => import('./ecrans/Cloture').then((m) => ({ default: m.Cloture })));
+const Reglages = lazy(() => import('./ecrans/Reglages').then((m) => ({ default: m.Reglages })));
 
-const ENVIRONNEMENTS: Record<Health['environnement'], string> = {
-  local: 'Local',
-  production: 'Production',
-};
+type Onglet = 'caisse' | 'stock' | 'heures' | 'cloture';
 
-function dateLongue(dateMetier: string): string {
-  const [annee, mois, jour] = dateMetier.split('-').map(Number);
-  return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(
-    new Date(Date.UTC(annee ?? 1970, (mois ?? 1) - 1, jour ?? 1)),
-  );
+const ONGLETS = [
+  { id: 'caisse', label: t.onglets.caisse, icon: ShoppingBasket },
+  { id: 'stock', label: t.onglets.stock, icon: Package },
+  { id: 'heures', label: t.onglets.heures, icon: Clock },
+  { id: 'cloture', label: t.onglets.cloture, icon: ReceiptText },
+];
+
+function useEnLigne(): boolean {
+  const [enLigne, setEnLigne] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const on = () => setEnLigne(true);
+    const off = () => setEnLigne(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+  return enLigne;
 }
 
 export function App() {
-  const [etat, setEtat] = useState<Etat>({ phase: 'chargement' });
-
+  const [pret, setPret] = useState(false);
   useEffect(() => {
-    const controller = new AbortController();
-    fetch('/api/health', { signal: controller.signal })
-      .then(async (response) => {
-        const health = (await response.json()) as Health;
-        setEtat({ phase: 'ok', health });
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        setEtat({ phase: 'erreur', message: error instanceof Error ? error.message : 'Serveur injoignable' });
-      });
-    return () => controller.abort();
+    appliquerTheme(lireTheme());
+    semerSiVide()
+      .catch((e: unknown) => console.error('semence', e))
+      .finally(() => setPret(true));
   }, []);
-
+  if (!pret) return <main className="min-h-dvh bg-ground" aria-busy />;
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-4 pt-16 pb-10">
-      <header className="flex flex-col gap-2">
-        <p className="flex items-center gap-2.5 font-display text-brand font-semibold tracking-tight">
-          <Leaf aria-hidden className="size-8 text-violet" strokeWidth={2} />
-          Debajah Création
-        </p>
-        <p className="text-body text-ink-muted">
-          Mon Stand v2 est en construction. Cette page vérifie que l’application, le serveur et la base de données
-          communiquent.
-        </p>
-      </header>
-
-      <section
-        aria-labelledby="etat-titre"
-        className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-4"
-        aria-busy={etat.phase === 'chargement'}
-      >
-        <h1 id="etat-titre" className="text-heading font-bold">
-          État du service
-        </h1>
-        {etat.phase === 'chargement' && (
-          <p className="flex items-center gap-2 text-body text-ink-muted">
-            <LoaderCircle aria-hidden className="size-5 animate-spin motion-reduce:animate-none" />
-            Vérification en cours…
-          </p>
-        )}
-        {etat.phase === 'erreur' && (
-          <Ligne ok={false} icone={<Server aria-hidden className="size-5" />} titre="Serveur injoignable">
-            {etat.message}
-          </Ligne>
-        )}
-        {etat.phase === 'ok' && <Rapport health={etat.health} />}
-      </section>
-    </main>
+    <SessionProvider>
+      <Coquille />
+    </SessionProvider>
   );
 }
 
-function Rapport({ health }: { health: Health }) {
-  const { base } = health;
+function Coquille() {
+  const { vendeurId, toast, fermerToast } = useSession();
+  if (!vendeurId) return <Acces />;
   return (
     <>
-      <Ligne
-        ok
-        icone={<Server aria-hidden className="size-5" />}
-        titre={`Serveur · ${ENVIRONNEMENTS[health.environnement]}`}
-      >
-        {`Nouméa, ${dateLongue(health.dateMetier)} · ${health.heureMetier}`}
-      </Ligne>
-      {base.ok ? (
-        <Ligne ok icone={<Database aria-hidden className="size-5" />} titre="Base de données connectée">
-          {`${base.tables} tables · migration ${base.migration ?? 'aucune'} · ${base.latenceMs} ms`}
-        </Ligne>
-      ) : (
-        <Ligne ok={false} icone={<Database aria-hidden className="size-5" />} titre="Base de données inaccessible">
-          {base.erreur}
-        </Ligne>
+      <Principal vendeurId={vendeurId} />
+      {toast && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--spacing-tap-lg)+env(safe-area-inset-bottom)+72px)] z-50 flex justify-center px-4">
+          <Toast
+            message={toast.message}
+            detail={toast.detail}
+            tone={toast.tone}
+            actionLabel={toast.actionLabel}
+            onAction={
+              toast.onAction
+                ? () => {
+                    toast.onAction?.();
+                    fermerToast();
+                  }
+                : undefined
+            }
+            onClose={fermerToast}
+          />
+        </div>
       )}
     </>
   );
 }
 
-function Ligne({ ok, icone, titre, children }: { ok: boolean; icone: ReactNode; titre: string; children: ReactNode }) {
+function Principal({ vendeurId }: { vendeurId: string }) {
+  const [onglet, setOnglet] = useState<Onglet>('caisse');
+  const [reglages, setReglages] = useState(false);
+  const vendeur = useVendeur(vendeurId);
+  const journee = useJourneeOuverte();
+  const enAttente = useOutboxCount();
+  const enLigne = useEnLigne();
+
+  const titres: Record<Onglet, string> = {
+    caisse: t.onglets.caisse,
+    stock: t.stock.titre,
+    heures: t.heures.titre,
+    cloture: t.cloture.titre,
+  };
+  const sousTitre = journee ? `${dateCourte(journee.dateLocale)} · ${journee.lieu}` : dateCourte(dateMetier());
+
   return (
-    <div className="flex items-start gap-3">
-      <span className="grid size-10 shrink-0 place-items-center rounded-md bg-surface-sunk text-violet">{icone}</span>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="text-body font-semibold">{titre}</p>
-        <p className="text-caption text-ink-muted tabular-nums">{children}</p>
-      </div>
-      <span
-        className={`inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-caption font-semibold ${
-          ok ? 'bg-success-soft text-success' : 'bg-danger-soft text-danger'
-        }`}
-      >
-        {ok ? (
-          <CircleCheck aria-hidden className="size-3.5" strokeWidth={2.5} />
-        ) : (
-          <CircleAlert aria-hidden className="size-3.5" strokeWidth={2.5} />
-        )}
-        {ok ? 'OK' : 'Erreur'}
-      </span>
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-ground lg:max-w-4xl">
+      <BarreApp title={titres[onglet]} subtitle={sousTitre}>
+        <StatutSync state={enLigne ? 'online' : 'offline'} pending={enAttente} compact={enLigne && enAttente === 0} />
+        <button
+          type="button"
+          onClick={() => setReglages(true)}
+          aria-label={t.reglages.titre}
+          className="grid size-tap-min place-items-center rounded-md"
+        >
+          {vendeur ? <Avatar name={vendeur.prenom} size={36} /> : <Settings aria-hidden className="size-6" />}
+        </button>
+      </BarreApp>
+      {!enLigne && (
+        <div className="px-4 pb-2">
+          <Banniere tone="warning" icon={CloudOff}>
+            {t.sync.bandeauHorsLigne}
+          </Banniere>
+        </div>
+      )}
+      <main className="flex flex-1 flex-col">
+        <Suspense fallback={<p className="p-6 text-center text-body text-ink-muted">{t.commun.chargement}</p>}>
+          {onglet === 'caisse' && <Caisse vendeurId={vendeurId} journee={journee ?? null} />}
+          {onglet === 'stock' && <Stock vendeurId={vendeurId} />}
+          {onglet === 'heures' && <Heures vendeurId={vendeurId} />}
+          {onglet === 'cloture' && <Cloture vendeurId={vendeurId} journee={journee ?? null} />}
+        </Suspense>
+      </main>
+      <BarreOnglets items={ONGLETS} active={onglet} onSelect={(id) => setOnglet(id as Onglet)} />
+      <Suspense fallback={null}>
+        {reglages && <Reglages open={reglages} onClose={() => setReglages(false)} vendeurId={vendeurId} />}
+      </Suspense>
     </div>
   );
 }

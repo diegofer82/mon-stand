@@ -234,3 +234,17 @@ export const syncOps = sqliteTable('sync_ops', {
   deviceId: text('device_id').notNull(),
   receivedAt: text('received_at').notNull().default(now),
 });
+
+// Fondo de caja por divisa al abrir la jornada (validación del diseño, §4): 1 000 CFP y 100 AUD por defecto.
+// Sustituye a journees.fond_caisse_cfp, que deja de usarse (una migración solo añade).
+export const journeeFonds = sqliteTable(
+  'journee_fonds',
+  {
+    journeeId: text('journee_id')
+      .notNull()
+      .references(() => journees.id),
+    devise: text('devise', { enum: DEVISES }).notNull(),
+    montant: real('montant').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.journeeId, t.devise] })],
+);
