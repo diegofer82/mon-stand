@@ -356,7 +356,7 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 
 **Hecho cuando**: al cerrar la jornada el PDF queda archivado y visible en el panel.
 
-**Estado**: código hecho el 2026-09-27. `app/test/automatisations.spec.ts` comprueba en el runtime de Workers: clôture sincronizada → archivo en R2 visible y descargable desde el panel (HTML sin navegador), KPIs y exportes del mes, tasas (fuente simulada) en KV + historial + diario, archivo mensual. Pendiente de Diego: comprobar en producción el primer PDF real (Browser Rendering) tras una clôture de prueba.
+**Estado**: código hecho el 2026-09-27. `app/test/automatisations.spec.ts` comprueba en el runtime de Workers: clôture sincronizada → archivo en R2 visible y descargable desde el panel (HTML sin navegador), KPIs y exportes del mes, tasas (fuente simulada) en KV + historial + diario, archivo mensual. Verificado en producción el 2026-09-27: una jornada de test (lieu «Test PDF (à purger)», appareil de test revocado) sincronizada desde la API produjo un PDF real por Browser Rendering (86 Ko) en R2, servido por el panel; el cron de tasas también se lanzó a mano desde /admin (tasas BCE en KV, historial y diario). Los datos de esa jornada se borran con la purga de la Fase 6.
 
 ### Fase 6 — Migración y puesta en producción (≈ 1–2 días, antes de la reanudación del mercado)
 
