@@ -1,6 +1,6 @@
 # Plan de trabajo — Mon Stand v2 (Cloudflare + rediseño)
 
-> Estado: **propuesta validada** · 2026-09-25
+> Estado: **propuesta validada** · 2026-09-25 · **revisada el 2026-09-27: sin preview, directo a producción** (§0, §5)
 > Punto de partida: v1.3 (`index.html` en GitHub Pages)
 
 ---
@@ -15,7 +15,10 @@
 | Varios teléfonos a la vez | **No por ahora**, pero el modelo de datos se diseña multi-dispositivo desde el día 1; el tiempo real queda en Backlog |
 | Diseño | Rediseño completo con **/design** (Design System + canvas de pantallas en claude.ai) |
 | Plan Cloudflare | **Workers Paid** (5 $/mes) + **Zero Trust Teams Free** (Access hasta 50 usuarios), ambos activos — ver §3 |
-| Google Sheets en la v1 | **No se corrige** (bug 5, duplicados, script v1.2): la app no se usa hasta el próximo mercado (~2026-10-03) y la sync se retira con la v2 (decidido 2026-09-26) |
+| Calendario | El mercado **para 3 meses** desde el 2026-09-27 (reanudación hacia finales de diciembre de 2026). La v2 sale **directamente en producción** antes de la reanudación; la v1.5 sigue en GitHub Pages como plan B hasta el corte (decidido 2026-09-27) |
+| Entornos | **Sin preview**: local → producción. Nadie usa la app durante la parada, así que producción sirve también de entorno de pruebas hasta el corte. Worker `mon-stand-preview` nunca creado; D1 `mon-stand-preview` borrada el 2026-09-27 (decidido 2026-09-27) |
+| Datos de la migración | **Definitivos**: el export del teléfono del 2026-09-26 y las respuestas de la vendedora del 2026-09-27. La v1 no registra nada más durante la parada → una sola importación y sin día de mercado con v1 y v2 en paralelo (decidido 2026-09-27) |
+| Google Sheets en la v1 | **No se corrige** (bug 5, duplicados, script v1.2): la app no se usa durante la parada del mercado y la sync se retira con la v2 (decidido 2026-09-26) |
 
 ---
 
@@ -74,7 +77,7 @@
 
 | Pieza | Servicio | Uso |
 |---|---|---|
-| Web instalable | Workers Static Assets | SPA + PWA, deploy automático por push, URL de preview por PR |
+| Web instalable | Workers Static Assets | SPA + PWA, deploy automático en cada push a `main` (sin URLs de preview) |
 | API | Workers + Hono | Bootstrap, sync, cierres, admin, exportes |
 | Base de datos | D1 | Fuente de verdad (ventas, stock, horas, cierres) |
 | Tasas de cambio | Cron diario + KV | EUR base (Frankfurter/BCE) × 119,332; fallback open.er-api |
@@ -181,7 +184,7 @@ Cifras verificadas en la documentación oficial de Cloudflare el 2026-09-25.
 Coste estimado para el volumen de un stand: **los 5 $/mes de Workers Paid** que ya se pagan; R2 dentro de su capa gratuita (10 GB); Access sin coste con Zero Trust Teams Free (hasta 50 usuarios).
 
 Notas:
-- **Cloudflare Access sobre `workers.dev`**: Access puede proteger la URL `workers.dev` de producción, las URLs de preview, o ambas. Se usará para `/admin` y las previews; las vendedoras entran con PIN.
+- **Cloudflare Access sobre `workers.dev`**: Access puede proteger la URL `workers.dev` de producción. Se usará para `/admin` (no hay previews); las vendedoras entran con PIN.
 - Las funciones de **dominio** (WAF, reglas personalizadas, Polish) **no aplican a `*.workers.dev`**: se aprovecharán si más adelante se usa un dominio propio.
 - El **envío de email** exige "onboardear" un dominio de la cuenta Cloudflare en Email Service (registros DKIM/DMARC); la app puede seguir en `workers.dev`. Los envíos a direcciones de destino verificadas son gratuitos y no cuentan en la cuota. Sin dominio: el PDF queda en R2 y se descarga desde `/admin`.
 
@@ -261,6 +264,8 @@ Respuestas de la vendedora (2026-09-27):
 
 Estimaciones orientativas en días de trabajo efectivo.
 
+**Sin preview** (§0): cada cambio se valida en local (`npm run check`: tests en el runtime real de Workers contra una D1 migrada) y en la CI del PR, y llega a producción al mergear en `main`. Hasta el corte nadie usa la app, así que las pruebas en el teléfono se hacen en la URL de producción con datos de prueba, que se borran antes de importar los reales (Fase 6). **Ningún dato real entra en producción antes de la Fase 4**: hasta entonces la API no tiene autenticación.
+
 ### Fase 0 — Estabilizar la v1.3 → v1.4 (≈ 1 día · GitHub Pages)
 - [x] Fechas en hora local (bug 1)
 - [x] Tasas: EUR fijo 119,332; resto derivado de tasas EUR; conservar decimales (bugs 2–3)
@@ -283,7 +288,7 @@ Estimaciones orientativas en días de trabajo efectivo.
 
 Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas en divisa** del historial (la v1.4 fallaba 8 de 12).
 
-**Estado**: mergeada en `main` (PR #3) el 2026-09-26. Falta probarla en el teléfono de la vendedora antes del próximo mercado (~2026-10-03).
+**Estado**: mergeada en `main` (PR #3) el 2026-09-26. La prueba en el teléfono de la vendedora ya no corre prisa: el mercado para 3 meses y la v2 debe estar lista antes de la reanudación. La v1.5 queda como plan B si no lo está.
 
 ### Fase 1 — Diseño con /design (≈ 2–3 días)
 - [x] Design System "Debajah Création" (primera versión, §4)
@@ -298,15 +303,15 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 ### Fase 2 — Fundaciones Cloudflare (≈ 2 días)
 - [x] Proyecto `app/`: Vite + React + TS + `@cloudflare/vite-plugin` + Hono; ESLint, Prettier, Vitest (suite Worker en el runtime real contra D1 migrada + suite de dominio)
 - [x] **Activar R2** en el dashboard de Cloudflare (activado y verificado el 2026-09-25)
-- [x] `wrangler.jsonc` con entornos local, preview y producción, siguiendo la convención de ControlCash: Workers `mon-stand` y `mon-stand-preview`; D1 `mon-stand-production` y `mon-stand-preview` (creadas el 2026-09-26 en Oceanía); KV `mon-stand-taux` (compartido: tasas públicas); R2 `mon-stand-files` (un prefijo por entorno). Browser Run y cron se añaden en la Fase 5 con su código
-- [x] Migración D1 inicial (esquema §2 + validación del diseño) con Drizzle: `app/migrations/0000_init.sql`, 16 tablas, aplicada a preview y producción el 2026-09-26
-- [ ] Workers Builds conectado al repo (directorio raíz `app/`): deploy en push a `main`, URL de preview por PR — pasos en [`app/README.md`](../app/README.md), a hacer en el panel de Cloudflare
-- [ ] Publicación en `mon-stand.<cuenta>.workers.dev`; Cloudflare Access sobre las URLs de preview (`/admin` en la Fase 4)
+- [x] `wrangler.jsonc` con entornos local y producción, siguiendo la convención de ControlCash: Worker `mon-stand`; D1 `mon-stand-production` (creada el 2026-09-26 en Oceanía); KV `mon-stand-taux` (tasas); R2 `mon-stand-files` (un prefijo por entorno). El entorno preview se retiró el 2026-09-27 (§0). Browser Run y cron se añaden en la Fase 5 con su código
+- [x] Migración D1 inicial (esquema §2 + validación del diseño) con Drizzle: `app/migrations/0000_init.sql`, 16 tablas, aplicada a producción el 2026-09-26
+- [x] Workers Builds conectado al repo el 2026-09-27 (directorio raíz `app/`): deploy en cada push a `main`, **sin builds de otras ramas** (una versión de preview usaría la D1 real) — configuración en [`app/README.md`](../app/README.md)
+- [x] Publicación en <https://mon-stand.applis.workers.dev>: primer deploy con Wrangler el 2026-09-27; `/api/health` responde `ok` con la D1 de producción (migración `0000_init.sql`, 16 tablas). Access sobre `/admin` en la Fase 4
 - [x] CI GitHub Actions (`.github/workflows/ci.yml`): formato, lint, tipos de bindings, typecheck, tests y build en cada PR
 
-**Hecho cuando**: una página React + `/api/health` leyendo D1 están desplegadas en `workers.dev`, con preview por PR.
+**Hecho cuando**: una página React + `/api/health` leyendo D1 están desplegadas en `workers.dev`, con deploy automático desde `main`.
 
-**Estado**: todo lo que se hace desde el repositorio está listo y verificado en local (`/api/health` responde con la D1 migrada). Falta conectar los dos Workers a Workers Builds y activar Access en las previews, desde el panel de Cloudflare.
+**Estado**: hecha el 2026-09-27. Producción en <https://mon-stand.applis.workers.dev>, desplegada por Workers Builds en cada push a `main`.
 
 ### Fase 3 — Nueva interfaz (≈ 5–7 días)
 - [ ] Componentes del Design System
@@ -316,7 +321,7 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 - [ ] PWA: manifest, iconos, service worker, Dexie, outbox; todo funciona sin red
 - [ ] Textos centralizados (FR por defecto) para poder añadir EN más adelante
 
-**Hecho cuando**: una venta completa y un cierre funcionan en modo avión en iPhone y Android.
+**Hecho cuando**: una venta completa y un cierre funcionan en modo avión en iPhone y Android (PWA instalada desde la URL de producción, con datos de prueba).
 
 ### Fase 4 — API, sincronización y acceso (≈ 3–4 días)
 - [ ] Rutas Hono + validación zod (§2)
@@ -335,19 +340,25 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 
 **Hecho cuando**: al cerrar la jornada el PDF queda archivado y visible en el panel.
 
-### Fase 6 — Migración y corte (≈ 1 día + 1 día de mercado)
-- [ ] Importador "v1 JSON → D1" en `/admin` (idempotente, con informe de lo importado)
+### Fase 6 — Migración y puesta en producción (≈ 1–2 días, antes de la reanudación del mercado)
+
+El export del 2026-09-26 es definitivo (§0): una sola importación, sin día de mercado en paralelo. Requisito: la Fase 4 desplegada (la API ya no es pública).
+
+- [ ] Importador "export v1 JSON → D1": script local en `app/scripts/` que genera el SQL y se aplica a producción con Wrangler. Se ejecuta una vez, así que no hace falta pantalla en `/admin`; es idempotente (ids derivados del export, `INSERT OR IGNORE`) por si hay que repetirlo tras una corrección, y da un informe de lo importado. Se prueba en la D1 local con un export sintético: **el export real nunca entra en el repo**
   - Ventas v1.4: `montantEncaisse` en CFP + `montantDevise`/`tauxCFP` en divisa. Ventas v1.3 (sin `montantDevise`): `montantEncaisse` está en la divisa de `devise` y no guarda la tasa
   - Cierres v1.3 sin `id` (el export les asigna `clo_legacy_N`) y con fecha UTC si se cerraron antes de las 11:00
   - Artículos v1.5: `prixDevises` (solo precios manuales) → `article_prix`. Ventas v1.5 en divisa: `totalDevise` → `vente_paiements.total_devise`
 - [x] ~~Si hay datos en Google Sheets: exportarlos una vez e importarlos~~ — no hace falta, todo está en el export del teléfono (§1)
-- [ ] Un día de mercado con v1 y v2 en paralelo; comparar cierres
+- [x] ~~Un día de mercado con v1 y v2 en paralelo~~ — sustituido por el ensayo y la verificación siguientes: el mercado está parado (§0)
+- [ ] Ensayo con la vendedora en producción: instalar la PWA en su teléfono, emparejarlo y simular una jornada (ventas en modo avión, cobro en AUD con monnaie, conteo de caja, cierre)
+- [ ] Borrar los datos de prueba (ventas, jornadas, movimientos de stock… tabla por tabla, comprobando que quedan a cero) e importar el export
+- [ ] Verificar contra el export: 26 artículos y su stock, número de ventas, CA y reparto por divisa de cada uno de los 4 cierres, horas por sesión
 - [ ] Corte: `index.html` raíz → página de redirección a `workers.dev`; v1 archivada en `legacy/`
 - [ ] Desactivar el despliegue de Apps Script; actualizar el README
 
-**Hecho cuando**: la vendedora usa solo la v2 y todo el historial está en D1.
+**Hecho cuando**: antes de la reanudación del mercado, la vendedora tiene la v2 instalada y todo el historial está en D1.
 
-**Total orientativo: ~3 semanas de trabajo efectivo.**
+**Total orientativo: ~3 semanas de trabajo efectivo**, con los 3 meses de parada como margen.
 
 ---
 
@@ -370,6 +381,9 @@ Verificado con el export del teléfono: la nueva regla reproduce las **12 ventas
 | iOS borra el almacenamiento de webs no usadas en 7 días (si no están en la pantalla de inicio) | Instalar la PWA en la pantalla de inicio + D1 como fuente de verdad |
 | `localStorage` no se transfiere entre dominios | Export JSON en la Fase 0 + importador en la Fase 6 |
 | Errores de fecha por zona horaria | `Pacific/Noumea` explícito + tests |
+| Sin preview, un error llega directo a producción | Tests en el runtime real de Workers y CI antes del merge; migraciones que solo añaden, probadas en local; `wrangler rollback` para el código y D1 Time Travel (30 días) para los datos; hasta el corte nadie usa la app |
+| Datos de prueba mezclados con los reales | Nada real en producción antes de la Fase 4; los datos de prueba se borran y se comprueban a cero antes de importar (Fase 6) |
+| La v2 no está lista al reanudarse el mercado | 3 meses de margen para ~3 semanas de trabajo; si no basta, la v1.5 sigue en GitHub Pages (plan B), pero el export dejaría de ser definitivo: habría que exportar de nuevo antes de importar |
 
 ---
 

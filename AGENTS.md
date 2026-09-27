@@ -33,8 +33,8 @@ Estas reglas se aplican a **todos los agentes** (Claude Code, Codex, Copilot, et
 
 - **Idiomas**: interfaz de la app en francés; documentación y commits en español.
 - **Cloudflare** (misma convención que los demás proyectos de la cuenta):
-  - Workers: `mon-stand` (producción) y `mon-stand-preview`
-  - D1: `mon-stand-production` y `mon-stand-preview`
+  - Worker: `mon-stand` · D1: `mon-stand-production`
+  - **Sin entorno preview** (decidido el 2026-09-27): se prueba en local (`npm run dev`, `npm run check`) y se despliega a producción desde `main`
   - KV: `mon-stand-taux` · R2: `mon-stand-files`
 - **Importes** en enteros CFP; **zona horaria** `Pacific/Noumea` (nunca `toISOString()` para fechas de negocio).
 - **Secretos**: nunca en el repo; usar los secretos de Wrangler o las variables del entorno.
