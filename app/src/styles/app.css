@@ -1,0 +1,193 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/atkinson-hyperlegible-next';
+@import '@fontsource-variable/playfair-display';
+
+/*
+  Tokens del Design System «Debajah Création»
+  (https://claude.ai/artifact/EL9M2DpdxJkeKziaHprhFp).
+  Tema claro «Plein soleil» por defecto; oscuro «Soir» según el sistema o con data-theme.
+*/
+:root {
+  color-scheme: light;
+  --ground: #f4f1f8;
+  --surface: #ffffff;
+  --surface-sunk: #ebe6f2;
+  --line: #ddd6e8;
+  --line-strong: #8a7ea0;
+  --ink: #1a0f2e;
+  --ink-muted: #564a6d;
+  --violet: #4a2785;
+  --violet-soft: #ede5fa;
+  --on-violet: #ffffff;
+  --night: #1f0f3d;
+  --on-night: #ffffff;
+  --on-night-muted: #c8bce0;
+  --night-raised: #ffffff17;
+  --gold: #e0b12f;
+  --gold-edge: #96700a;
+  --gold-soft: #fbf0cf;
+  --on-gold: #1a0f2e;
+  --success: #17703f;
+  --success-soft: #e1f3e8;
+  --on-success: #ffffff;
+  --warning: #9a4d00;
+  --warning-soft: #fdebd3;
+  --danger: #b3261e;
+  --danger-soft: #fce5e2;
+  --on-danger: #ffffff;
+  --scrim: #120a218c;
+  --focus: #4a2785;
+  --shadow-sheet: 0 -4px 12px #1a0f2e14, 0 -16px 40px #1a0f2e29;
+  --shadow-float: 0 4px 10px #1a0f2e1f, 0 14px 32px #1a0f2e2e;
+  --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #4a2785;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --ground: #120a21;
+    --surface: #1c1331;
+    --surface-sunk: #281d42;
+    --line: #35294f;
+    --line-strong: #81739f;
+    --ink: #f3eefb;
+    --ink-muted: #b9adcf;
+    --violet: #bda4f5;
+    --violet-soft: #30234f;
+    --on-violet: #170c2c;
+    --night: #33225e;
+    --on-night: #f3eefb;
+    --gold: #e8be4f;
+    --gold-edge: #e8be4f;
+    --gold-soft: #3a2e10;
+    --success: #62cf93;
+    --success-soft: #13301f;
+    --on-success: #0d2618;
+    --warning: #f5a74b;
+    --warning-soft: #3b2510;
+    --danger: #ff8b7e;
+    --danger-soft: #3d1715;
+    --on-danger: #1a0f2e;
+    --scrim: #000000a6;
+    --focus: #bda4f5;
+    --shadow-sheet: 0 -16px 40px #000000b3;
+    --shadow-float: 0 14px 32px #000000cc;
+    --focus-ring: 0 0 0 2px #1c1331, 0 0 0 4px #bda4f5;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ground: #120a21;
+  --surface: #1c1331;
+  --surface-sunk: #281d42;
+  --line: #35294f;
+  --line-strong: #81739f;
+  --ink: #f3eefb;
+  --ink-muted: #b9adcf;
+  --violet: #bda4f5;
+  --violet-soft: #30234f;
+  --on-violet: #170c2c;
+  --night: #33225e;
+  --on-night: #f3eefb;
+  --gold: #e8be4f;
+  --gold-edge: #e8be4f;
+  --gold-soft: #3a2e10;
+  --success: #62cf93;
+  --success-soft: #13301f;
+  --on-success: #0d2618;
+  --warning: #f5a74b;
+  --warning-soft: #3b2510;
+  --danger: #ff8b7e;
+  --danger-soft: #3d1715;
+  --on-danger: #1a0f2e;
+  --scrim: #000000a6;
+  --focus: #bda4f5;
+  --shadow-sheet: 0 -16px 40px #000000b3;
+  --shadow-float: 0 14px 32px #000000cc;
+  --focus-ring: 0 0 0 2px #1c1331, 0 0 0 4px #bda4f5;
+}
+
+/* Tailwind: bg-ground, text-ink, bg-gold, text-on-gold, rounded-lg, font-display, text-amount-xl… */
+@theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-surface-sunk: var(--surface-sunk);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --color-on-violet: var(--on-violet);
+  --color-night: var(--night);
+  --color-on-night: var(--on-night);
+  --color-on-night-muted: var(--on-night-muted);
+  --color-night-raised: var(--night-raised);
+  --color-gold: var(--gold);
+  --color-gold-edge: var(--gold-edge);
+  --color-gold-soft: var(--gold-soft);
+  --color-on-gold: var(--on-gold);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-on-success: var(--on-success);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-on-danger: var(--on-danger);
+  --color-scrim: var(--scrim);
+  --shadow-sheet: var(--shadow-sheet);
+  --shadow-float: var(--shadow-float);
+}
+
+@theme {
+  --font-display: 'Playfair Display Variable', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Atkinson Hyperlegible Next Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --text-brand: 30px;
+  --text-brand--line-height: 34px;
+  --text-title: 24px;
+  --text-title--line-height: 30px;
+  --text-heading: 18px;
+  --text-heading--line-height: 24px;
+  --text-body: 16px;
+  --text-body--line-height: 24px;
+  --text-caption: 13px;
+  --text-caption--line-height: 18px;
+  --text-overline: 12px;
+  --text-overline--line-height: 16px;
+  --text-amount-xl: 44px;
+  --text-amount-xl--line-height: 48px;
+  --text-amount-lg: 28px;
+  --text-amount-lg--line-height: 32px;
+  --text-amount-md: 18px;
+  --text-amount-md--line-height: 24px;
+
+  --spacing-tap-min: 48px;
+  --spacing-tap-lg: 56px;
+  --spacing-tap-xl: 64px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid transparent;
+    box-shadow: var(--focus-ring);
+  }
+}
