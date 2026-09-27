@@ -24,3 +24,8 @@ export async function lireMeta(key: string): Promise<string | null> {
 export async function ecrireMeta(key: string, value: string): Promise<void> {
   await db.meta.put({ key, value });
 }
+
+/** Tras el emparejamiento el servidor asigna el id definitivo: se olvida la caché. */
+export function oublierDeviceId(): void {
+  deviceIdCache = null;
+}

@@ -116,6 +116,15 @@ export const vendeurPublicSchema = z.object({
   prenom: z.string().trim().min(1).max(40),
   tauxHoraireCfp: entierCfp,
   actif: z.boolean(),
+  // Al crear una vendedora o cambiar su PIN viaja el hash PBKDF2 (nunca el PIN); ausentes = se conservan.
+  pinHash: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
+  pinSalt: z
+    .string()
+    .regex(/^[0-9a-f]{32}$/)
+    .optional(),
 });
 
 const enveloppe = {

@@ -37,6 +37,8 @@ export const t = {
     erreur: 'Erreur de synchronisation',
     enAttente: (n: number) => (n === 1 ? '1 en attente' : `${n} en attente`),
     bandeauHorsLigne: 'Hors ligne : les ventes sont gardées sur ce téléphone et partiront dès le retour du réseau.',
+    bandeauErreur: (detail: string) => `Synchronisation en erreur : ${detail}`,
+    revoque: 'Appareil révoqué',
   },
 
   acces: {
@@ -243,6 +245,46 @@ export const t = {
     dejaInstallee: 'App installée',
     lieuDefaut: 'Lieu par défaut',
     enregistre: 'Réglage enregistré',
+  },
+
+  appairage: {
+    titre: 'Appairer ce téléphone',
+    aide: 'Le code s’obtient dans le panneau du propriétaire (/admin). Il est valable 15 minutes.',
+    code: 'Code d’appairage',
+    codeFormat: 'Le code fait 8 caractères.',
+    codeInvalide: 'Code inconnu, déjà utilisé ou expiré.',
+    horsLigne: 'Pas de réseau : l’appairage a besoin d’une connexion.',
+    nom: 'Nom de cet appareil',
+    nomDefaut: 'Téléphone du stand',
+    valider: 'Appairer',
+    revoque: 'Cet appareil a été révoqué. Demandez un nouveau code au propriétaire.',
+    desappairer: 'Désappairer cet appareil',
+    desappairerAide:
+      'Efface les données locales de ce téléphone. Impossible tant qu’il reste des actions à synchroniser.',
+    appareilNom: (nom: string) => `Appareil : ${nom}`,
+    derniereSync: (quand: string) => `Dernière synchronisation ${quand}`,
+    jamaisSync: 'Jamais synchronisé',
+    resynchroniser: 'Synchroniser maintenant',
+  },
+
+  admin: {
+    titre: 'Panneau du propriétaire',
+    jeton: 'Jeton d’administration',
+    jetonAide: 'Sans Cloudflare Access, collez le jeton ADMIN_TOKEN défini sur le Worker. Il reste dans cet onglet.',
+    nonConfigure: 'Administration non configurée sur le serveur (Cloudflare Access ou ADMIN_TOKEN).',
+    appairage: 'Appairer un téléphone',
+    appairageAide: 'Générez un code, puis saisissez-le sur le téléphone à l’ouverture de l’app.',
+    genererCode: 'Générer un code',
+    codeValable: (heure: string) => `Valable jusqu’à ${heure}`,
+    appareils: 'Appareils',
+    aucunAppareil: 'Aucun appareil appairé.',
+    actualiser: 'Actualiser',
+    appaire: 'Appairé le',
+    vu: 'vu le',
+    actif: 'Actif',
+    revoque: 'Révoqué',
+    revoquer: 'Révoquer',
+    revoquerConfirm: (nom: string) => `Révoquer « ${nom} » ? Il devra être appairé de nouveau.`,
   },
 
   erreurs: {
