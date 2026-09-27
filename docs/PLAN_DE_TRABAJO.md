@@ -44,7 +44,7 @@
 | 9 | XLSX (~900 KB) cargado, `exportHeuresXLSX` nunca se llama | l. 12, 742 | Carga lenta en red de mercado |
 | 10 | PIN en claro en `localStorage`, `1234` por defecto | l. 414 | Protección nula |
 | 11 | `innerHTML` con nombres/comentarios sin escapar | l. 690, 775… | HTML roto / inyección |
-| 12 | `user-scalable=no`, `</div>` sobrante, `google-apps-script.js` ausente del repo | l. 5, 317, 401 | Accesibilidad, HTML inválido, config no reproducible |
+| 12 | `user-scalable=no`, `</div>` sobrante, `google-apps-script.js` ausente del repo (el de la v1.1 está en `legacy/v1.1/` desde el 2026-09-27) | l. 5, 317, 401 | Accesibilidad, HTML inválido, config no reproducible |
 | 13 | Cobro en divisa: `montantEncaisse` guardado en la divisa y sumado como CFP; `remiseEncaissement` = CFP − divisa | `validerVente` | «Total encaissé» falso y remises ficticias (detectado en la Fase 0) |
 | 14 | Precio en divisa = total CFP convertido y redondeado **hacia arriba** al múltiplo de 5 | `arrondir5`, `convertCFP` | La app sugería 30 AUD por un collar de 2 000 CFP (la vendedora cobra 25) y 55 AUD por dos (cobra 50); sin precio fijo por divisa |
 
@@ -53,7 +53,7 @@
 - **Nada que importar**: las ventas (21), sesiones (5) y el stock de la hoja están todos en el export del teléfono, que tiene además el 18/04 y las sesiones de abril.
 - «Ventes»: cada sync vuelve a añadir todas las ventas del día (`appendRows`) → 62 filas para 21 ventas. Sin fila de cabecera.
 - Hoja en configuración regional US: las fechas `JJ/MM/AAAA` con día ≤ 12 quedan invertidas (07/05 → 5 de julio); las demás quedan como texto.
-- «Heures»: 6 columnas, sin cabecera, 77 filas para 5 sesiones → no corresponde al script v1.2 (que borra la hoja y escribe 8 columnas con `ID` y `Payée`): **el despliegue activo es una versión anterior**.
+- «Heures»: 6 columnas, sin cabecera, 77 filas para 5 sesiones → no corresponde al script v1.2 (que borra la hoja y escribe 8 columnas con `ID` y `Payée`): **el despliegue activo es una versión anterior**. Muy probablemente el script de la v1.1, archivado el 2026-09-27 en [`legacy/v1.1/google-apps-script.js`](../legacy/v1.1/google-apps-script.js): crea las hojas por adelantado (de ahí la falta de cabecera) y vuelve a añadir todas las ventas y sesiones en cada sync.
 - Script v1.2 (no desplegado): `Payée` se escribe `OUI`/`NON` pero se lee como `TRUE`/`1` → al cargar, todas las sesiones pasarían a «no pagada»; Sheets convierte `Arrivée`/`Départ` en horas → `debut`/`fin` inválidos. **No desplegarlo tal cual.**
 - `loadAll` devuelve el stock sin precios en divisa: la v1.5 conserva los `prixDevises` del teléfono.
 
@@ -147,7 +147,8 @@ La v1 sigue en la raíz (GitHub Pages la sirve) hasta el corte; la v2 vive en `a
 
 ```
 mon-stand/
-├─ index.html              # v1.3 (hasta el corte; luego página de redirección)
+├─ index.html              # v1.5 (hasta el corte; luego página de redirección)
+├─ legacy/                 # v1.0 y v1.1 archivadas, excluidas de GitHub Pages (_config.yml); la v1.5 al corte
 ├─ inventaire.json
 ├─ docs/PLAN_DE_TRABAJO.md
 └─ app/                    # v2

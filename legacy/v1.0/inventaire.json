@@ -1,0 +1,228 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-04-18",
+  "categories": [
+    {
+      "id": "bijoux",
+      "nom": "Bijoux & Accessoires",
+      "emoji": "💍"
+    },
+    {
+      "id": "deco",
+      "nom": "Déco",
+      "emoji": "🪴"
+    },
+    {
+      "id": "jeux",
+      "nom": "Jeux",
+      "emoji": "♟️"
+    },
+    {
+      "id": "papeterie",
+      "nom": "Papeterie",
+      "emoji": "🖊️"
+    }
+  ],
+  "articles": [
+    {
+      "id": "collier-100",
+      "nom": "Collier 100",
+      "categorie": "bijoux",
+      "prixCFP": 1000,
+      "quantite": 93,
+      "promo2eme": null
+    },
+    {
+      "id": "collier-200",
+      "nom": "Collier 200",
+      "categorie": "bijoux",
+      "prixCFP": 2000,
+      "quantite": 93,
+      "promo2eme": null
+    },
+    {
+      "id": "collier-300",
+      "nom": "Collier 300",
+      "categorie": "bijoux",
+      "prixCFP": 3000,
+      "quantite": 93,
+      "promo2eme": null
+    },
+    {
+      "id": "chaine",
+      "nom": "Chaîne",
+      "categorie": "bijoux",
+      "prixCFP": 2500,
+      "quantite": 5,
+      "promo2eme": null
+    },
+    {
+      "id": "bracelet",
+      "nom": "Bracelet",
+      "categorie": "bijoux",
+      "prixCFP": 2000,
+      "quantite": 13,
+      "promo2eme": null
+    },
+    {
+      "id": "bracelet-chaine",
+      "nom": "Bracelet chaîne",
+      "categorie": "bijoux",
+      "prixCFP": 2500,
+      "quantite": 1,
+      "promo2eme": null
+    },
+    {
+      "id": "dessous-verres",
+      "nom": "Dessous de verres",
+      "categorie": "deco",
+      "prixCFP": 3500,
+      "quantite": 7,
+      "promo2eme": null
+    },
+    {
+      "id": "bague",
+      "nom": "Bague",
+      "categorie": "bijoux",
+      "prixCFP": 1000,
+      "quantite": 1,
+      "promo2eme": null
+    },
+    {
+      "id": "boucles",
+      "nom": "Boucles d'oreilles",
+      "categorie": "bijoux",
+      "prixCFP": 2000,
+      "quantite": 48,
+      "promo2eme": null
+    },
+    {
+      "id": "porte-cles",
+      "nom": "Porte-clés",
+      "categorie": "bijoux",
+      "prixCFP": 1000,
+      "quantite": 65,
+      "promo2eme": null
+    },
+    {
+      "id": "magnet",
+      "nom": "Magnet",
+      "categorie": "deco",
+      "prixCFP": 700,
+      "quantite": 10,
+      "promo2eme": null
+    },
+    {
+      "id": "broche",
+      "nom": "Broche",
+      "categorie": "bijoux",
+      "prixCFP": 1000,
+      "quantite": 48,
+      "promo2eme": null
+    },
+    {
+      "id": "stylo",
+      "nom": "Stylo",
+      "categorie": "papeterie",
+      "prixCFP": 1500,
+      "quantite": 44,
+      "promo2eme": null
+    },
+    {
+      "id": "petite-boite",
+      "nom": "Petite boîte",
+      "categorie": "deco",
+      "prixCFP": 2500,
+      "quantite": 4,
+      "promo2eme": null
+    },
+    {
+      "id": "grande-boite",
+      "nom": "Grande boîte",
+      "categorie": "deco",
+      "prixCFP": 3000,
+      "quantite": 2,
+      "promo2eme": null
+    },
+    {
+      "id": "miroir",
+      "nom": "Miroir",
+      "categorie": "deco",
+      "prixCFP": 2500,
+      "quantite": 1,
+      "promo2eme": null
+    },
+    {
+      "id": "plateau",
+      "nom": "Plateau",
+      "categorie": "deco",
+      "prixCFP": 2500,
+      "quantite": 6,
+      "promo2eme": null
+    },
+    {
+      "id": "echiquier",
+      "nom": "Échiquier",
+      "categorie": "jeux",
+      "prixCFP": 16000,
+      "quantite": 3,
+      "promo2eme": null
+    },
+    {
+      "id": "domino",
+      "nom": "Domino",
+      "categorie": "jeux",
+      "prixCFP": 5500,
+      "quantite": 1,
+      "promo2eme": null
+    },
+    {
+      "id": "lezard",
+      "nom": "Lézard déco",
+      "categorie": "deco",
+      "prixCFP": 2200,
+      "quantite": 2,
+      "promo2eme": null
+    },
+    {
+      "id": "feuilles-cana",
+      "nom": "Feuilles cana",
+      "categorie": "deco",
+      "prixCFP": 1500,
+      "quantite": 1,
+      "promo2eme": null
+    },
+    {
+      "id": "rond",
+      "nom": "Rond déco",
+      "categorie": "deco",
+      "prixCFP": 1500,
+      "quantite": 14,
+      "promo2eme": null
+    },
+    {
+      "id": "lotus",
+      "nom": "Lotus",
+      "categorie": "deco",
+      "prixCFP": 1850,
+      "quantite": 4,
+      "promo2eme": null
+    },
+    {
+      "id": "bourgoir",
+      "nom": "Bourgoir",
+      "categorie": "deco",
+      "prixCFP": 0,
+      "quantite": 1,
+      "promo2eme": null
+    },
+    {
+      "id": "boite-deco",
+      "nom": "Boîte déco",
+      "categorie": "deco",
+      "prixCFP": 0,
+      "quantite": 1,
+      "promo2eme": null
+    }
+  ]
+}
