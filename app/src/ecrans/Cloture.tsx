@@ -1,6 +1,6 @@
 // Cierre: KPIs, reparto por modo de pago, top de artículos, alertas de stock, ventas del día,
 // conteo de caja (esperado vs contado → écart) y clôture; historial de jornadas.
-import { Banknote, CalendarCheck, History, Lock, ReceiptText, Trophy } from 'lucide-react';
+import { Banknote, CalendarCheck, Clock, History, Lock, ReceiptText, Trophy } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { attenduParDevise, resumeJournee, type ResumeJournee } from '../../shared/domaine/cloture';
@@ -13,7 +13,14 @@ import { LigneComptage } from '../composants/ui/CaisseUI';
 import { Champ } from '../composants/ui/Saisie';
 import { Carte, EtatVide, Feuille, LigneListe } from '../composants/ui/Structure';
 import { cloturerJournee, type ComptageSaisi } from '../db/actions';
-import { useArticles, useComptages, useJourneesCloturees, useQuantites, useVentesJournee } from '../db/hooks';
+import {
+  useArticles,
+  useComptages,
+  useJourneesCloturees,
+  useQuantites,
+  useSessionEnCours,
+  useVentesJournee,
+} from '../db/hooks';
 import { useSession } from '../etat/session';
 import { t } from '../textes/fr';
 import { dateMoyenne, heure } from '../utils/format';
@@ -73,7 +80,14 @@ export function Cloture({ vendeurId, journee }: { vendeurId: string; journee: Jo
             journee={journee}
             ventes={ventes}
             vendeurId={vendeurId}
-            onCloturee={() => notifier({ message: t.cloture.journeeCloturee, tone: 'success', duree: 2500 })}
+            onCloturee={(heuresEnCours) =>
+              notifier({
+                message: t.cloture.journeeCloturee,
+                detail: heuresEnCours ? t.cloture.rappelHeures : undefined,
+                tone: 'success',
+                duree: heuresEnCours ? 5000 : 2500,
+              })
+            }
           />
         </>
       ) : (
@@ -216,8 +230,10 @@ function Comptage({
   journee: Journee;
   ventes: Vente[];
   vendeurId: string;
-  onCloturee: () => void;
+  onCloturee: (heuresEnCours: boolean) => void;
 }) {
+  // Solo un recordatorio: la clôture puede hacerse en casa, después del mercado; la hora de fin se corrige en Heures.
+  const enService = useSessionEnCours(vendeurId);
   const attendus = useMemo(() => attenduParDevise(journee, ventes), [journee, ventes]);
   const [comptes, setComptes] = useState<Record<string, string>>({});
   const [commentaire, setCommentaire] = useState('');
@@ -239,7 +255,7 @@ function Comptage({
     setComptes({});
     setCommentaire('');
     onClose();
-    onCloturee();
+    onCloturee(enService !== null);
   };
 
   return (
@@ -261,7 +277,12 @@ function Comptage({
       }
     >
       <div className="flex flex-col gap-4 pt-1">
-        <div className="grid grid-cols-[3.5rem_1fr_1fr_5rem] gap-2 text-overline font-semibold tracking-wide text-ink-muted uppercase">
+        {enService && (
+          <Banniere tone="warning" icon={Clock} title={t.cloture.heuresEnCours(heure(enService.debut))}>
+            {t.cloture.heuresEnCoursAide}
+          </Banniere>
+        )}
+        <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1fr)_5rem] gap-2 text-overline font-semibold tracking-wide text-ink-muted uppercase">
           <span />
           <span>{t.cloture.attendu}</span>
           <span className="text-right">{t.cloture.compte}</span>

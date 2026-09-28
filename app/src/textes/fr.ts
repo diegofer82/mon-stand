@@ -208,6 +208,10 @@ export const t = {
     cloturer: 'Clôturer la journée',
     cloturerAide: 'La journée passe dans l’historique. Les ventes ne pourront plus être annulées.',
     journeeCloturee: 'Journée clôturée',
+    heuresEnCours: (heure: string) => `Vos heures tournent encore (depuis ${heure})`,
+    heuresEnCoursAide:
+      'Pensez à les terminer dans l’onglet Heures. En cas d’oubli, touchez ensuite la session pour corriger l’heure de fin.',
+    rappelHeures: 'Pensez à terminer vos heures dans l’onglet Heures.',
     historique: 'Historique',
     aucunHistorique: 'Aucune journée clôturée',
     detailJournee: 'Journée',

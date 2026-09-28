@@ -267,7 +267,7 @@ export function LigneComptage({
   const ecart = valeur === null || Number.isNaN(valeur) ? null : Math.round((valeur - attendu) * 100) / 100;
   const id = `compte-${devise}`;
   return (
-    <div className="grid grid-cols-[3.5rem_1fr_1fr_5rem] items-center gap-2 py-2">
+    <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,1fr)_5rem] items-center gap-2 py-2">
       <span className="text-body font-bold">{devise}</span>
       <Montant value={attendu} devise={devise} size="md" tone="muted" />
       <label htmlFor={id} className="sr-only">
@@ -279,7 +279,7 @@ export function LigneComptage({
         value={compte}
         onChange={(e) => onChange(e.target.value)}
         placeholder={t.cloture.compte}
-        className="h-tap-min rounded-md border border-line-strong bg-surface px-3 text-right text-body font-semibold tabular-nums outline-none focus-visible:shadow-[var(--focus-ring)]"
+        className="h-tap-min w-full min-w-0 rounded-md border border-line-strong bg-surface px-3 text-right text-body font-semibold tabular-nums outline-none focus-visible:shadow-[var(--focus-ring)]"
       />
       <span
         className={`text-right text-caption font-semibold tabular-nums ${ecart === null ? 'text-ink-muted' : ecart === 0 ? 'text-success' : ecart < 0 ? 'text-danger' : 'text-warning'}`}
