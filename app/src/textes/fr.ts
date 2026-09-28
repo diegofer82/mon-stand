@@ -62,6 +62,13 @@ export const t = {
     aucuneOuverte: 'Aucune journée ouverte',
     aucuneOuverteAide: 'Ouvrez la journée pour commencer à vendre.',
     dejaCloturee: 'La journée est clôturée. Ouvrez-en une nouvelle pour vendre.',
+    commencerHeures: 'Commencer mes heures',
+    commencerHeuresAide: (heure: string) => `Début à ${heure}, arrondi à la demi-heure.`,
+    heuresNonTerminees: (date: string, heure: string) => `Heures du ${date} (${heure}) jamais terminées`,
+    heuresNonTermineesAide:
+      'Dans l’onglet Heures : terminez-les, corrigez l’heure de fin, puis commencez celles du jour.',
+    ouverte: 'Journée ouverte',
+    ouverteEtHeures: (heure: string) => `Journée ouverte · en service depuis ${heure}`,
   },
 
   caisse: {
@@ -201,6 +208,10 @@ export const t = {
     cloturer: 'Clôturer la journée',
     cloturerAide: 'La journée passe dans l’historique. Les ventes ne pourront plus être annulées.',
     journeeCloturee: 'Journée clôturée',
+    heuresEnCours: (heure: string) => `Vos heures tournent encore (depuis ${heure})`,
+    heuresEnCoursAide:
+      'Pensez à les terminer dans l’onglet Heures. En cas d’oubli, touchez ensuite la session pour corriger l’heure de fin.',
+    rappelHeures: 'Pensez à terminer vos heures dans l’onglet Heures.',
     historique: 'Historique',
     aucunHistorique: 'Aucune journée clôturée',
     detailJournee: 'Journée',

@@ -1,23 +1,26 @@
 // Caja: chips de categoría, cuadrícula de artículos (un toque = una unidad), carrito en bottom sheet,
 // barra de caja con el total y paso al cobro. Sin jornada abierta, propone abrirla.
-import { CalendarPlus, Search, ShoppingBasket, Tag, Trash2 } from 'lucide-react';
+import { CalendarPlus, Clock, Search, ShoppingBasket, Tag, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { dateMetier } from '../../shared/dates';
 import { FONDS_DEFAUT, LIEU_DEFAUT } from '../../shared/domaine/catalogue';
 import type { ResultatPaiement } from '../../shared/domaine/encaissement';
+import { arrondir30 } from '../../shared/domaine/heures';
 import { totalLigneCfp, totauxPanier, unitesEnPromo } from '../../shared/domaine/panier';
 import { ordreCaisse } from '../../shared/domaine/stock';
 import type { Journee, LignePanier } from '../../shared/domaine/types';
 import { formatNumber, lireMontant } from '../../shared/montants';
-import { Montant } from '../composants/ui/Affichage';
+import { Banniere, Montant } from '../composants/ui/Affichage';
 import { Bouton } from '../composants/ui/Bouton';
 import { BarreCaisse, LignePanier as LignePanierUI, TuileArticle } from '../composants/ui/CaisseUI';
-import { Champ, Puce } from '../composants/ui/Saisie';
+import { Champ, Interrupteur, Puce } from '../composants/ui/Saisie';
 import { EtatVide, Feuille } from '../composants/ui/Structure';
-import { annulerVente, enregistrerVente, ouvrirJournee } from '../db/actions';
-import { useArticles, useCategories, useQuantites, useSetting, useVendues30j } from '../db/hooks';
+import { annulerVente, commencerSession, enregistrerVente, ouvrirJournee } from '../db/actions';
+import { useArticles, useCategories, useQuantites, useSessionEnCours, useSetting, useVendues30j } from '../db/hooks';
 import { useSession } from '../etat/session';
 import { t } from '../textes/fr';
+import { dateCourte, heure, partiesLocales } from '../utils/format';
 import { Encaisser } from './Encaisser';
 
 const DUREE_ANNULATION_MS = 10_000;
@@ -297,12 +300,16 @@ export function Caisse({ vendeurId, journee }: { vendeurId: string; journee: Jou
   );
 }
 
+/** Abre la jornada y, salvo que se desmarque, empieza la sesión de horas (olvido frecuente en la v1). */
 export function OuvrirJournee({ open, onClose, vendeurId }: { open: boolean; onClose: () => void; vendeurId: string }) {
+  const { notifier } = useSession();
   const lieuDefaut = useSetting('lieuDefaut');
+  const enService = useSessionEnCours(vendeurId);
   const [lieuSaisi, setLieuSaisi] = useState<string | null>(null);
   const lieu = lieuSaisi ?? lieuDefaut ?? LIEU_DEFAUT;
   const [fondCfp, setFondCfp] = useState(String(FONDS_DEFAUT.CFP));
   const [fondAud, setFondAud] = useState(String(FONDS_DEFAUT.AUD));
+  const [commencerHeures, setCommencerHeures] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
 
   const valider = async () => {
@@ -320,6 +327,12 @@ export function OuvrirJournee({ open, onClose, vendeurId }: { open: boolean; onC
     if (cfp > 0) fonds.CFP = cfp;
     if (aud > 0) fonds.AUD = aud;
     await ouvrirJournee({ vendeurId }, lieu, fonds);
+    if (commencerHeures && !enService) {
+      const session = await commencerSession({ vendeurId });
+      notifier({ message: t.journee.ouverteEtHeures(heure(session.debut)), tone: 'success', duree: 2500 });
+    } else {
+      notifier({ message: t.journee.ouverte, tone: 'success', duree: 2000 });
+    }
     onClose();
   };
 
@@ -368,6 +381,28 @@ export function OuvrirJournee({ open, onClose, vendeurId }: { open: boolean; onC
           <p className="text-caption text-ink-muted">{t.journee.fondsAide}</p>
           {erreur && erreur === t.commun.montantInvalide && <p className="text-caption text-danger">{erreur}</p>}
         </div>
+        {enService && partiesLocales(enService.debut).date !== dateMetier() ? (
+          <Banniere
+            tone="warning"
+            icon={Clock}
+            title={t.journee.heuresNonTerminees(
+              dateCourte(partiesLocales(enService.debut).date),
+              heure(enService.debut),
+            )}
+          >
+            {t.journee.heuresNonTermineesAide}
+          </Banniere>
+        ) : enService ? (
+          <Banniere tone="success" icon={Clock} title={t.heures.enServiceDepuis(heure(enService.debut))} />
+        ) : (
+          <Interrupteur
+            icon={Clock}
+            label={t.journee.commencerHeures}
+            help={t.journee.commencerHeuresAide(heure(arrondir30(new Date()).toISOString()))}
+            checked={commencerHeures}
+            onChange={setCommencerHeures}
+          />
+        )}
       </div>
     </Feuille>
   );
