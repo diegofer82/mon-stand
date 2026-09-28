@@ -1,19 +1,23 @@
 -- Comprobación tabla por tabla tras la purga: todas las cuentas deben ser 0 (salvo devices: los teléfonos emparejados).
-SELECT 'articles' AS tabla, count(*) AS n FROM articles
-UNION ALL SELECT 'article_prix', count(*) FROM article_prix
-UNION ALL SELECT 'categories', count(*) FROM categories
-UNION ALL SELECT 'vendeurs', count(*) FROM vendeurs
-UNION ALL SELECT 'journees', count(*) FROM journees
-UNION ALL SELECT 'journee_fonds', count(*) FROM journee_fonds
-UNION ALL SELECT 'ventes', count(*) FROM ventes
-UNION ALL SELECT 'vente_lignes', count(*) FROM vente_lignes
-UNION ALL SELECT 'vente_paiements', count(*) FROM vente_paiements
-UNION ALL SELECT 'stock_mouvements', count(*) FROM stock_mouvements
-UNION ALL SELECT 'comptages_caisse', count(*) FROM comptages_caisse
-UNION ALL SELECT 'sessions_travail', count(*) FROM sessions_travail
-UNION ALL SELECT 'paiements_heures', count(*) FROM paiements_heures
-UNION ALL SELECT 'taux_historique', count(*) FROM taux_historique
-UNION ALL SELECT 'settings', count(*) FROM settings
-UNION ALL SELECT 'sync_journal', count(*) FROM sync_journal
-UNION ALL SELECT 'sync_ops', count(*) FROM sync_ops
-UNION ALL SELECT 'devices (teléfonos)', count(*) FROM devices;
+-- Una sola SELECT sobre json_each: D1 rechaza una SELECT compuesta con tantos UNION ALL («too many terms in compound SELECT»).
+SELECT key AS tabla, value AS n FROM json_each(json_object(
+  'articles', (SELECT count(*) FROM articles),
+  'article_prix', (SELECT count(*) FROM article_prix),
+  'categories', (SELECT count(*) FROM categories),
+  'vendeurs', (SELECT count(*) FROM vendeurs),
+  'journees', (SELECT count(*) FROM journees),
+  'journee_fonds', (SELECT count(*) FROM journee_fonds),
+  'ventes', (SELECT count(*) FROM ventes),
+  'vente_lignes', (SELECT count(*) FROM vente_lignes),
+  'vente_paiements', (SELECT count(*) FROM vente_paiements),
+  'stock_mouvements', (SELECT count(*) FROM stock_mouvements),
+  'comptages_caisse', (SELECT count(*) FROM comptages_caisse),
+  'sessions_travail', (SELECT count(*) FROM sessions_travail),
+  'paiements_heures', (SELECT count(*) FROM paiements_heures),
+  'taux_historique', (SELECT count(*) FROM taux_historique),
+  'settings', (SELECT count(*) FROM settings),
+  'sync_journal', (SELECT count(*) FROM sync_journal),
+  'sync_ops', (SELECT count(*) FROM sync_ops),
+  'auth_tentatives', (SELECT count(*) FROM auth_tentatives),
+  'devices (teléfonos)', (SELECT count(*) FROM devices)
+));
