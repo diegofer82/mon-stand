@@ -21,5 +21,8 @@ DELETE FROM articles;
 DELETE FROM categories;
 DELETE FROM taux_historique;
 DELETE FROM settings;
+-- Un teléfono queda ligado a la vendedora que entró con su PIN (devices.vendeur_id): se desliga antes de borrarla,
+-- si no la clave foránea rechaza el DELETE y la purga entera se anula. Vuelve a ligarse en el próximo PIN.
+UPDATE devices SET vendeur_id = NULL;
 DELETE FROM vendeurs;
 DELETE FROM devices WHERE id = 'dev_serveur';
