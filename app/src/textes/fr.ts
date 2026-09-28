@@ -62,6 +62,13 @@ export const t = {
     aucuneOuverte: 'Aucune journée ouverte',
     aucuneOuverteAide: 'Ouvrez la journée pour commencer à vendre.',
     dejaCloturee: 'La journée est clôturée. Ouvrez-en une nouvelle pour vendre.',
+    commencerHeures: 'Commencer mes heures',
+    commencerHeuresAide: (heure: string) => `Début à ${heure}, arrondi à la demi-heure.`,
+    heuresNonTerminees: (date: string, heure: string) => `Heures du ${date} (${heure}) jamais terminées`,
+    heuresNonTermineesAide:
+      'Dans l’onglet Heures : terminez-les, corrigez l’heure de fin, puis commencez celles du jour.',
+    ouverte: 'Journée ouverte',
+    ouverteEtHeures: (heure: string) => `Journée ouverte · en service depuis ${heure}`,
   },
 
   caisse: {

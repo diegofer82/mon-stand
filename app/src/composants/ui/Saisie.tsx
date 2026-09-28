@@ -143,6 +143,49 @@ export function Puce({
   );
 }
 
+/** Interruptor (role="switch"): toda la fila es la zona táctil. */
+export function Interrupteur({
+  label,
+  help,
+  checked,
+  onChange,
+  icon: Icon,
+  className = '',
+}: {
+  label: string;
+  help?: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  icon?: LucideIcon;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`flex min-h-tap-min w-full items-center gap-3 rounded-md border border-line bg-surface px-3 py-2.5 text-left outline-none focus-visible:shadow-[var(--focus-ring)] ${className}`}
+    >
+      {Icon && (
+        <Icon aria-hidden className={`size-5 shrink-0 ${checked ? 'text-violet' : 'text-ink-muted'}`} strokeWidth={2} />
+      )}
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-body font-semibold text-ink">{label}</span>
+        {help && <span className="text-caption text-ink-muted">{help}</span>}
+      </span>
+      <span
+        aria-hidden
+        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? 'bg-violet' : 'bg-line-strong'}`}
+      >
+        <span
+          className={`absolute top-1 left-1 size-5 rounded-full shadow-xs transition-transform ${checked ? 'translate-x-5 bg-on-violet' : 'bg-surface'}`}
+        />
+      </span>
+    </button>
+  );
+}
+
 export function Compteur({
   value,
   onInc,
