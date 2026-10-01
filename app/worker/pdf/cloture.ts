@@ -142,7 +142,7 @@ ${
     .join('') || ligneTable(['—', 'Aucune vente', '', ''])
 }
 </table></section>
-<footer>Mon Stand · document généré automatiquement à la clôture · importes en CFP, paiements en devise au taux du jour</footer>
+<footer>Mon Stand · document généré automatiquement à la clôture · montants en CFP, paiements en devise au taux du jour</footer>
 </body></html>`;
 }
 

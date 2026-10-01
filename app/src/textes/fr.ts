@@ -265,6 +265,7 @@ export const t = {
     codeFormat: 'Le code fait 8 caractères.',
     codeInvalide: 'Code inconnu, déjà utilisé ou expiré.',
     horsLigne: 'Pas de réseau : l’appairage a besoin d’une connexion.',
+    bootstrapEchoue: 'Les données n’ont pas pu être chargées. Demandez un nouveau code et réessayez.',
     nom: 'Nom de cet appareil',
     nomDefaut: 'Téléphone du stand',
     valider: 'Appairer',

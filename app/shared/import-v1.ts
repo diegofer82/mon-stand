@@ -349,10 +349,16 @@ export function genererImport(
   exp.historique.forEach((h, i) => {
     const cloId = h.id ?? `clo_legacy_${i}`;
     const journeeId = `jour_v1_${cloId}`;
-    const clotureAt = h.clotureAt ?? `${h.date}T06:00:00.000Z`;
-    const date = h.clotureAt ? dateNoumea(h.clotureAt) : h.date;
-    if (date !== h.date) avertissements.push(`Clôture ${cloId} : date ${h.date} (UTC) → ${date} (Nouméa)`);
-    const premiereVente = [...h.ventes].map((v) => v.ts).sort()[0];
+    const tsVentes = h.ventes.map((v) => v.ts).sort();
+    const premiereVente = tsVentes[0];
+    const derniereVente = tsVentes[tsVentes.length - 1];
+    // La «date» de un cierre v1 es la del momento del cierre (en UTC, y la v1.3 no guarda `clotureAt`): un
+    // cierre hecho en casa dos días después llevaba la fecha equivocada. El día de mercado es el de las ventas.
+    const date = premiereVente ? dateNoumea(premiereVente) : h.clotureAt ? dateNoumea(h.clotureAt) : h.date;
+    if (date !== h.date) avertissements.push(`Clôture ${cloId} : date ${h.date} (v1) → ${date} (Nouméa)`);
+    // Sin `clotureAt` se supone un cierre a las 17:00 de Nouméa del día registrado, nunca antes de la última venta.
+    let clotureAt = h.clotureAt ?? `${h.date}T06:00:00.000Z`;
+    if (derniereVente && clotureAt < derniereVente) clotureAt = derniereVente;
     requetes.push(
       insert('journees', {
         id: journeeId,

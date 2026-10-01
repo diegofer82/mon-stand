@@ -10,6 +10,7 @@ import { useJourneeOuverte, useMeta, useOutboxCount, useVendeur } from './db/hoo
 import { Acces } from './ecrans/Acces';
 import { Appairage } from './ecrans/Appairage';
 import { Caisse } from './ecrans/Caisse';
+import { usePanier } from './etat/panier';
 import { SessionProvider, useSession } from './etat/session';
 import { appliquerTheme, lireTheme } from './etat/theme';
 import { demarrerSync } from './sync/client';
@@ -95,6 +96,7 @@ function Principal({ vendeurId, revoque }: { vendeurId: string; revoque: boolean
   const journee = useJourneeOuverte();
   const enAttente = useOutboxCount();
   const sync = useSync();
+  const panier = usePanier();
 
   const titres: Record<Onglet, string> = {
     caisse: t.onglets.caisse,
@@ -141,7 +143,7 @@ function Principal({ vendeurId, revoque }: { vendeurId: string; revoque: boolean
       )}
       <main className="flex flex-1 flex-col">
         <Suspense fallback={<p className="p-6 text-center text-body text-ink-muted">{t.commun.chargement}</p>}>
-          {onglet === 'caisse' && <Caisse vendeurId={vendeurId} journee={journee ?? null} />}
+          {onglet === 'caisse' && <Caisse vendeurId={vendeurId} journee={journee ?? null} panier={panier} />}
           {onglet === 'stock' && <Stock vendeurId={vendeurId} />}
           {onglet === 'heures' && <Heures vendeurId={vendeurId} />}
           {onglet === 'cloture' && <Cloture vendeurId={vendeurId} journee={journee ?? null} />}

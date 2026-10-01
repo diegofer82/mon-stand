@@ -34,8 +34,8 @@ export function Stock({ vendeurId }: { vendeurId: string }) {
   }, [categories, articles]);
 
   const ajuster = async (a: Article, delta: number) => {
-    await mouvementStock({ vendeurId }, a.id, delta, delta > 0 ? 'reassort' : 'ajustement');
-    notifier({ message: `${a.nom} : ${t.stock.mouvementEnregistre(delta)}`, duree: 1200 });
+    const applique = await mouvementStock({ vendeurId }, a.id, delta, delta > 0 ? 'reassort' : 'ajustement');
+    if (applique !== 0) notifier({ message: `${a.nom} : ${t.stock.mouvementEnregistre(applique)}`, duree: 1200 });
   };
 
   const epuises = articles.filter((a) => a.actif && (quantite.get(a.id) ?? 0) <= 0).length;
@@ -237,6 +237,7 @@ function FormulaireArticle({ article, onClose, vendeurId, quantite }: Omit<Fiche
           value={nom}
           onChange={(e) => setNom(e.target.value)}
           autoComplete="off"
+          maxLength={80}
           error={erreur === t.commun.champRequis && !nom.trim() ? erreur : null}
         />
         <div className="grid grid-cols-[1fr_5rem] gap-3">
@@ -312,10 +313,11 @@ function FormulaireArticle({ article, onClose, vendeurId, quantite }: Omit<Fiche
         {article ? (
           <Champ
             label={`${t.stock.quantite} : ${quantite}`}
-            inputMode="numeric"
+            // Teclado de texto: el numérico de iOS no tiene signo menos. El «−» tipográfico vale como «-».
+            inputMode="text"
             amount
             value={ajustement}
-            onChange={(e) => setAjustement(e.target.value.replace(/[^-\d]/g, ''))}
+            onChange={(e) => setAjustement(e.target.value.replace(/[−–]/g, '-').replace(/[^-\d]/g, ''))}
             placeholder="+5 ou −2"
             help={`${t.stock.reassort} (+) ou ${t.stock.ajustement.toLowerCase()} (−), tracé comme un mouvement.`}
             icon={PackagePlus}

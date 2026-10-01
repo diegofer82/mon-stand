@@ -74,10 +74,13 @@ export function versCfp(montantDevise: number, cfpParUnite: number): number {
 
 /**
  * Lee un importe escrito a mano: acepta coma o punto decimal, espacios de miles (incluido U+202F)
- * y rechaza (null) lo ilegible o con más decimales de los que admite la divisa.
+ * y rechaza (null) lo ilegible o con más decimales de los que admite la divisa. En una divisa sin
+ * decimales (CFP, JPY), «6.000» o «12,500» son millares: leerlos como 6 o 12 falseaba el fondo y el conteo.
  */
 export function lireMontant(saisie: string, devise: string = 'CFP'): number | null {
-  const texte = saisie.replace(ESPACES_SAISIE, '').replace(',', '.');
+  const sansEspaces = saisie.replace(ESPACES_SAISIE, '');
+  const milliers = decimalesDevise(devise) === 0 && /^\d{1,3}([.,]\d{3})+$/.test(sansEspaces);
+  const texte = milliers ? sansEspaces.replace(/[.,]/g, '') : sansEspaces.replace(',', '.');
   if (!/^\d+(\.\d+)?$/.test(texte)) return null;
   const [, decimales = ''] = texte.split('.');
   if (decimales.replace(/0+$/, '').length > decimalesDevise(devise)) return null;

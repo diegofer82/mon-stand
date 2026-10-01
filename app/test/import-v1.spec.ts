@@ -44,7 +44,7 @@ describe('importador v1', () => {
     expect(c2).toMatchObject({ date: '2026-09-20', totalEncaisseCfp: 6344, totalEncaisseV1: 6344, ecart: 0 });
     expect(rapport.journees.find((j) => j.id === 'jour_v1_en_cours')?.nbVentes).toBe(1);
     expect(rapport.avertissements.some((a) => a.includes('v1.3'))).toBe(true);
-    expect(rapport.avertissements.some((a) => a.includes('2026-09-05 (UTC) → 2026-09-06'))).toBe(true);
+    expect(rapport.avertissements.some((a) => a.includes('2026-09-05 (v1) → 2026-09-06'))).toBe(true);
     expect(dateNoumea('2026-09-05T23:30:00.000Z')).toBe('2026-09-06');
 
     const sql = versSql(requetes);
@@ -97,5 +97,46 @@ describe('importador v1', () => {
       taux_horaire_cfp: number;
     }>();
     expect(vendeur).toEqual({ prenom: 'Marie', taux_horaire_cfp: 1500 });
+  });
+
+  it('un cierre v1.3 real (sin clotureAt, cerrado días después) toma la fecha de sus ventas', () => {
+    const vente = exportV1.historique[0]!.ventes[0]!;
+    const { requetes, rapport } = genererImport(
+      {
+        ...exportV1,
+        ventes: [],
+        historique: [
+          {
+            id: 'clo_legacy_3',
+            date: '2026-05-16',
+            nbVentes: 2,
+            totalEncaisse: 0,
+            // 12:45 y 17:40 en Nouméa, el 14 de mayo; el cierre se hizo el 16.
+            ventes: [
+              { ...vente, id: 1, ts: '2026-05-14T01:45:00.000Z' },
+              { ...vente, id: 2, ts: '2026-05-14T06:40:00.000Z' },
+            ],
+            sessions: [],
+          },
+          {
+            id: 'clo_legacy_4',
+            date: '2026-05-20',
+            nbVentes: 1,
+            totalEncaisse: 0,
+            // Última venta a las 17:40 de Nouméa, después del cierre supuesto de las 17:00.
+            ventes: [{ ...vente, id: 3, ts: '2026-05-20T06:40:00.000Z' }],
+            sessions: [],
+          },
+        ],
+      },
+      { pinHash: 'ab'.repeat(32), pinSalt: 'cd'.repeat(16), maintenant: '2026-12-01T00:00:00.000Z' },
+    );
+    expect(rapport.journees.map((j) => j.date)).toEqual(['2026-05-14', '2026-05-20']);
+    expect(rapport.avertissements.some((a) => a.includes('2026-05-16 (v1) → 2026-05-14'))).toBe(true);
+    const sql = versSql(requetes);
+    expect(sql).toContain("'jour_v1_clo_legacy_3', '2026-05-14'");
+    // Cierre supuesto (16 de mayo, 17:00) posterior a las ventas: se conserva; en el otro, se alinea con la última venta.
+    expect(sql).toContain("'2026-05-14T01:45:00.000Z', '2026-05-16T06:00:00.000Z'");
+    expect(sql).toContain("'2026-05-20T06:40:00.000Z', '2026-05-20T06:40:00.000Z'");
   });
 });
