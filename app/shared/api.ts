@@ -17,6 +17,7 @@ import {
 export const CODES_ERREUR = [
   'requete_invalide',
   'non_authentifie',
+  'access_requis',
   'appareil_inconnu',
   'code_invalide',
   'pin_incorrect',

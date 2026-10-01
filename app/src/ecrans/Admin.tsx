@@ -49,11 +49,18 @@ class ErreurAdmin extends Error {
 
 let jetonCourant = lireJeton();
 
-async function appelAdmin<T>(chemin: string, init: RequestInit = {}): Promise<T> {
+/**
+ * Petición a /api/admin. Si la sesión de Cloudflare Access ha caducado, Access responde antes que el Worker:
+ * un 401 sin nuestro JSON (lo pide la cabecera X-Requested-With) o una redirección a su login, que aquí no
+ * se sigue. Los dos casos salen como `access_requis`, igual que el 401 del Worker sin JWT válido.
+ */
+async function requeteAdmin(chemin: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
+  headers.set('X-Requested-With', 'XMLHttpRequest');
   if (init.body) headers.set('Content-Type', 'application/json');
   if (jetonCourant) headers.set('Authorization', `Bearer ${jetonCourant}`);
-  const r = await fetch(chemin, { ...init, headers, credentials: 'same-origin' });
+  const r = await fetch(chemin, { ...init, headers, credentials: 'same-origin', redirect: 'manual' });
+  if (r.type === 'opaqueredirect') throw new ErreurAdmin(401, 'access_requis', t.admin.sessionAide);
   if (!r.ok) {
     let corps: Partial<ErreurApi> = {};
     try {
@@ -61,17 +68,19 @@ async function appelAdmin<T>(chemin: string, init: RequestInit = {}): Promise<T>
     } catch {
       /* sin JSON */
     }
+    if (r.status === 401 && !corps.erreur) throw new ErreurAdmin(401, 'access_requis', t.admin.sessionAide);
     throw new ErreurAdmin(r.status, corps.erreur?.code ?? 'inconnu', corps.erreur?.message ?? `Erreur ${r.status}`);
   }
-  return (await r.json()) as T;
+  return r;
+}
+
+async function appelAdmin<T>(chemin: string, init: RequestInit = {}): Promise<T> {
+  return (await (await requeteAdmin(chemin, init)).json()) as T;
 }
 
 /** Descarga un fichero protegido (CSV, PDF) pasando el jeton en la cabecera. */
 async function telecharger(chemin: string, nom: string) {
-  const headers = new Headers();
-  if (jetonCourant) headers.set('Authorization', `Bearer ${jetonCourant}`);
-  const r = await fetch(chemin, { headers, credentials: 'same-origin' });
-  if (!r.ok) throw new ErreurAdmin(r.status, 'inconnu', `Erreur ${r.status}`);
+  const r = await requeteAdmin(chemin);
   const blob = await r.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -157,7 +166,8 @@ export function Admin() {
     setSaisieJeton('');
   };
 
-  const besoinJeton = moi.erreur && (moi.erreur.statut === 401 || moi.erreur.statut === 503);
+  const sessionAccess = moi.erreur?.code === 'access_requis';
+  const besoinJeton = moi.erreur && !sessionAccess && (moi.erreur.statut === 401 || moi.erreur.statut === 503);
   const avecMois = onglet === 'kpis' || onglet === 'journees' || onglet === 'heures' || onglet === 'exports';
 
   return (
@@ -190,7 +200,16 @@ export function Admin() {
           </div>
         </Carte>
       )}
-      {moi.erreur && !besoinJeton && <Banniere tone="danger">{moi.erreur.message}</Banniere>}
+      {sessionAccess && (
+        <Carte title={t.admin.session} icon={KeyRound}>
+          <p className="mb-3 text-caption text-ink-muted">{t.admin.sessionAide}</p>
+          {/* Recargar /admin pasa por la red (el service worker no la sirve): Access pide la sesión. */}
+          <Bouton variant="primary" size="md" onClick={() => window.location.reload()}>
+            {t.admin.seReconnecter}
+          </Bouton>
+        </Carte>
+      )}
+      {moi.erreur && !besoinJeton && !sessionAccess && <Banniere tone="danger">{moi.erreur.message}</Banniere>}
 
       {moi.donnees && (
         <>
