@@ -171,10 +171,15 @@ export async function enregistrerVente(
   return vente;
 }
 
-/** Anula una venta: movimiento compensatorio trazado por línea, la venta queda marcada (no se borra). */
-export async function annulerVente(ctx: Contexte, venteId: string): Promise<void> {
+/**
+ * Anula una venta: movimiento compensatorio trazado por línea, la venta queda marcada (no se borra).
+ * Solo mientras su jornada sigue abierta: tras el cierre (conteo e informe ya archivados) devuelve `false`.
+ */
+export async function annulerVente(ctx: Contexte, venteId: string): Promise<boolean> {
   const vente = await db.ventes.get(venteId);
-  if (!vente || vente.annuleeAt) return;
+  if (!vente || vente.annuleeAt) return false;
+  const journee = await db.journees.get(vente.journeeId);
+  if (!journee || journee.clotureeAt) return false;
   const env = await enveloppe(ctx);
   const mouvements: MouvementStock[] = vente.lignes.map((l) => ({
     id: `mvt_${uuid()}`,
@@ -187,6 +192,7 @@ export async function annulerVente(ctx: Contexte, venteId: string): Promise<void
     ts: env.ts,
   }));
   await emettreOp({ ...env, type: 'vente.annuler', venteId, annuleeAt: env.ts, mouvements });
+  return true;
 }
 
 // ---- Stock et articles ----

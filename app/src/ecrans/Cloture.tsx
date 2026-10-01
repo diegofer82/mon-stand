@@ -1,6 +1,6 @@
 // Cierre: KPIs, reparto por modo de pago, top de artículos, alertas de stock, ventas del día,
 // conteo de caja (esperado vs contado → écart) y clôture; historial de jornadas.
-import { Banknote, CalendarCheck, Clock, History, Lock, ReceiptText, Trophy } from 'lucide-react';
+import { Banknote, CalendarCheck, Clock, History, Lock, ReceiptText, Trophy, Undo2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { attenduParDevise, resumeJournee, type ResumeJournee } from '../../shared/domaine/cloture';
@@ -12,7 +12,7 @@ import { Bouton, BoutonMaintenu } from '../composants/ui/Bouton';
 import { LigneComptage } from '../composants/ui/CaisseUI';
 import { Champ } from '../composants/ui/Saisie';
 import { Carte, EtatVide, Feuille, LigneListe } from '../composants/ui/Structure';
-import { cloturerJournee, type ComptageSaisi } from '../db/actions';
+import { annulerVente, cloturerJournee, type ComptageSaisi } from '../db/actions';
 import {
   useArticles,
   useComptages,
@@ -33,6 +33,7 @@ export function Cloture({ vendeurId, journee }: { vendeurId: string; journee: Jo
   const historique = useJourneesCloturees();
   const [comptage, setComptage] = useState(false);
   const [detail, setDetail] = useState<Journee | null>(null);
+  const [aAnnuler, setAAnnuler] = useState<Vente | null>(null);
 
   const resume = useMemo(() => resumeJournee(ventes), [ventes]);
   const epuises = articles.filter((a) => a.actif && etatStock(quantite.get(a.id) ?? 0) === 'epuise');
@@ -70,7 +71,9 @@ export function Cloture({ vendeurId, journee }: { vendeurId: string; journee: Jo
               </div>
             )}
           </Carte>
-          <ListeVentes ventes={ventes} />
+          {/* Solo la jornada abierta permite anular: el historial (DetailJournee) lista las ventas sin acción. */}
+          <ListeVentes ventes={ventes} onAnnuler={setAAnnuler} />
+          <AnnulerVente vente={aAnnuler} vendeurId={vendeurId} onClose={() => setAAnnuler(null)} />
           <Bouton variant="primary" size="xl" block icon={Banknote} onClick={() => setComptage(true)}>
             {t.cloture.compterCaisse}
           </Bouton>
@@ -190,7 +193,12 @@ function Resume({ resume }: { resume: ResumeJournee }) {
   );
 }
 
-function ListeVentes({ ventes }: { ventes: Vente[] }) {
+const paiementsTexte = (v: Vente) =>
+  v.paiements
+    .map((p) => `${formatNumber(p.montantDevise, p.devise)} ${p.devise === 'TPE' ? 'CFP (carte)' : p.devise}`)
+    .join(' + ');
+
+function ListeVentes({ ventes, onAnnuler }: { ventes: Vente[]; onAnnuler?: (vente: Vente) => void }) {
   return (
     <Carte title={t.cloture.ventesDuJour} icon={ReceiptText} flush>
       {ventes.length === 0 ? (
@@ -205,8 +213,10 @@ function ListeVentes({ ventes }: { ventes: Vente[] }) {
                   {heure(v.ts)} · {v.lignes.map((l) => `${l.nomSnapshot} ×${l.qty}`).join(', ')}
                 </span>
               }
-              subtitle={`${v.paiements.map((p) => `${formatNumber(p.montantDevise, p.devise)} ${p.devise === 'TPE' ? 'CFP (carte)' : p.devise}`).join(' + ')}${v.remisePanierCfp ? ` · ${t.commun.remise} ${formatNumber(v.remisePanierCfp)}` : ''}${v.remiseEncaissementCfp ? ` · ${t.cobro.remiseEncaissement} ${formatNumber(v.remiseEncaissementCfp)}` : ''}`}
+              subtitle={`${paiementsTexte(v)}${v.remisePanierCfp ? ` · ${t.commun.remise} ${formatNumber(v.remisePanierCfp)}` : ''}${v.remiseEncaissementCfp ? ` · ${t.cobro.remiseEncaissement} ${formatNumber(v.remiseEncaissementCfp)}` : ''}`}
               amount={v.annuleeAt ? undefined : v.paiements.reduce((s, p) => s + p.montantCfp, 0)}
+              onClick={onAnnuler && !v.annuleeAt ? () => onAnnuler(v) : undefined}
+              chevron={!!onAnnuler && !v.annuleeAt}
             >
               {v.annuleeAt && <Badge tone="danger">{t.cloture.annulee}</Badge>}
             </LigneListe>
@@ -214,6 +224,52 @@ function ListeVentes({ ventes }: { ventes: Vente[] }) {
         </div>
       )}
     </Carte>
+  );
+}
+
+/** Confirmación de la anulación de una venta de la jornada abierta (botón mantenido: sin toque accidental). */
+function AnnulerVente({ vente, vendeurId, onClose }: { vente: Vente | null; vendeurId: string; onClose: () => void }) {
+  const { notifier } = useSession();
+  const annuler = async () => {
+    if (!vente) return;
+    const ok = await annulerVente({ vendeurId }, vente.id);
+    onClose();
+    notifier(
+      ok
+        ? { message: t.cobro.venteAnnulee, tone: 'success', duree: 2000 }
+        : { message: t.cloture.annulationImpossible, tone: 'danger', duree: 2500 },
+    );
+  };
+  return (
+    <Feuille
+      open={vente !== null}
+      onClose={onClose}
+      title={t.cloture.annulerTitre}
+      footer={
+        <BoutonMaintenu
+          label={t.cloture.annulerVente}
+          icon={Undo2}
+          tone="danger"
+          hint={t.heures.maintenir}
+          onComplete={() => void annuler()}
+        />
+      }
+    >
+      {vente && (
+        <div className="flex flex-col gap-3 pt-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <p className="text-body font-semibold">
+                {heure(vente.ts)} · {vente.lignes.map((l) => `${l.nomSnapshot} ×${l.qty}`).join(', ')}
+              </p>
+              <p className="text-caption text-ink-muted">{paiementsTexte(vente)}</p>
+            </div>
+            <Montant value={vente.paiements.reduce((s, p) => s + p.montantCfp, 0)} size="md" />
+          </div>
+          <p className="text-caption text-ink-muted">{t.cloture.annulerAide}</p>
+        </div>
+      )}
+    </Feuille>
   );
 }
 
