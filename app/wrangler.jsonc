@@ -16,8 +16,8 @@
     "APP_VERSION": "dev",
     // Cada entorno escribe en R2 bajo su prefijo.
     "R2_PREFIX": "local/",
-    // Administración (/api/admin): Cloudflare Access (dominio del equipo + AUD de la aplicación) o el secreto
-    // ADMIN_TOKEN (wrangler secret put). En local, sin autenticación.
+    // Administración (/api/admin): Cloudflare Access (dominio del equipo + AUD de la aplicación) o, sin Access,
+    // el secreto ADMIN_TOKEN (wrangler secret put). En local, sin autenticación.
     "ACCESS_TEAM_DOMAIN": "",
     "ACCESS_AUD": "",
     "ADMIN_SANS_AUTH": "true",
@@ -47,10 +47,11 @@
         "ENVIRONMENT": "production",
         "APP_VERSION": "2.0.0-alpha",
         "R2_PREFIX": "production/",
-        // Rellenar al crear la aplicación Access (Zero Trust → Access → Applications): dominio del equipo
-        // (<equipo>.cloudflareaccess.com) y Application Audience (AUD) Tag. Vacíos = solo ADMIN_TOKEN.
-        "ACCESS_TEAM_DOMAIN": "",
-        "ACCESS_AUD": "",
+        // Aplicación Access «Mon Stand — /admin» (Zero Trust → Access controls → Applications): dominio del
+        // equipo (<equipo>.cloudflareaccess.com) y Application Audience (AUD) Tag. Con los dos definidos,
+        // /api/admin exige el JWT de Access; vacíos = solo ADMIN_TOKEN.
+        "ACCESS_TEAM_DOMAIN": "autumn-lab-5582",
+        "ACCESS_AUD": "abe8b872993e55c6796dbabbf50b5c07cbfa263a4ba54e59fc397c640630fbc7",
         "ADMIN_SANS_AUTH": "false",
       },
       "d1_databases": [
