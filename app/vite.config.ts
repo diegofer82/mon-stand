@@ -40,7 +40,9 @@ export default defineConfig({
         // La app entera se precarga: sin red, todo sigue funcionando. La API no se cachea (los datos viven en IndexedDB).
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//, /^\/admin/],
+        // /admin y /cdn-cgi/ (retorno del login de Cloudflare Access) van siempre a la red: si el service worker
+        // respondiera con la app, Access no podría pedir la sesión ni dejar su cookie.
+        navigateFallbackDenylist: [/^\/api\//, /^\/admin/, /^\/cdn-cgi\//],
         cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },

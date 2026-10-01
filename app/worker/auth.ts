@@ -97,17 +97,20 @@ export const authAppareil: MiddlewareHandler<AppEnv> = async (c, next) => {
 };
 
 /**
- * Administración: JWT de Cloudflare Access (cabecera Cf-Access-Jwt-Assertion), o el jeton ADMIN_TOKEN
- * (secreto de Wrangler) en Authorization: Bearer, o nada en local si ADMIN_SANS_AUTH = "true".
- * Sin ninguno configurado en producción: 503, nunca abierto.
+ * Administración: JWT de Cloudflare Access (cabecera Cf-Access-Jwt-Assertion) si Access está configurado;
+ * si no, el jeton ADMIN_TOKEN (secreto de Wrangler) en Authorization: Bearer, o nada en local si
+ * ADMIN_SANS_AUTH = "true". Sin ninguno configurado en producción: 503, nunca abierto.
  */
 export const authAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
   const env = c.env;
   // Las vars llegan tipadas como literales de wrangler.jsonc ("" en local): se leen como string.
   const teamDomain: string = env.ACCESS_TEAM_DOMAIN;
   const aud: string = env.ACCESS_AUD;
-  const jwt = c.req.header('Cf-Access-Jwt-Assertion');
-  if (jwt && teamDomain && aud) {
+  if (teamDomain && aud) {
+    // Con Access configurado el JWT es obligatorio y el jeton ya no sirve: una petición que llega sin
+    // la cabecera ha esquivado Access en el borde (otra ruta hacia el Worker, un path que Access no cubre).
+    const jwt = c.req.header('Cf-Access-Jwt-Assertion');
+    if (!jwt) return erreur(c, 401, 'access_requis', 'Connexion Cloudflare Access requise');
     try {
       const payload = await verifyWithJwks(jwt, {
         jwks_uri: `https://${teamDomain}.cloudflareaccess.com/cdn-cgi/access/certs`,
@@ -120,7 +123,7 @@ export const authAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
       return;
     } catch (e) {
       console.warn('Access: JWT refusé', e instanceof Error ? e.message : e);
-      return erreur(c, 401, 'non_authentifie', 'Jeton Access invalide');
+      return erreur(c, 401, 'access_requis', 'Jeton Access invalide');
     }
   }
   const jeton = bearer(c);
@@ -134,7 +137,7 @@ export const authAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
     await next();
     return;
   }
-  if (!env.ADMIN_TOKEN && !(teamDomain && aud)) {
+  if (!env.ADMIN_TOKEN) {
     return erreur(c, 503, 'acces_non_configure', 'Administration non configurée : Cloudflare Access ou ADMIN_TOKEN');
   }
   return erreur(c, 401, 'non_authentifie', 'Authentification administrateur requise');
