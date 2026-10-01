@@ -143,13 +143,12 @@ sync_ops          op_id, device_id, received_at                  ← idempotenci
 
 ### Estructura del repo
 
-La v1 sigue en la raíz (GitHub Pages la sirve) hasta el corte; la v2 vive en `app/`.
+Desde el corte (2026-10-01) la raíz solo sirve la página de redirección (GitHub Pages); la v2 vive en `app/`.
 
 ```
 mon-stand/
-├─ index.html              # v1.5 (hasta el corte; luego página de redirección)
-├─ legacy/                 # v1.0 y v1.1 archivadas, excluidas de GitHub Pages (_config.yml); la v1.5 al corte
-├─ inventaire.json
+├─ index.html              # página de redirección hacia la v2
+├─ legacy/                 # v1.0, v1.1 y v1.5 archivadas, excluidas de GitHub Pages (_config.yml)
 ├─ docs/PLAN_DE_TRABAJO.md
 └─ app/                    # v2
    ├─ src/                 # React (pantallas, componentes, domain/, db/ Dexie)
@@ -374,13 +373,14 @@ El export del 2026-09-26 es definitivo (§0): una sola importación, sin día de
 - [x] Auditoría de QA antes de la puesta en producción (2026-10-01): jornada completa simulada en local (ventas multi-divisa, venta y cierre sin red, conteo, panel) y relectura del código. Dos fallos bloqueantes corregidos (barra del carrito tapada por las pestañas; hash del PIN borrado al editar una vendedora) y nueve más; lo pendiente y lo que hay que decidir está en [`AUDITORIA_QA_2026-10-01.md`](AUDITORIA_QA_2026-10-01.md). El ensayo en un teléfono real sigue pendiente: ningún teléfono ha sincronizado todavía una jornada en producción
 - [x] Borrar los datos de prueba con `app/scripts/purger-production.sql`, comprobar con `app/scripts/verifier-vide.sql` que todo está a cero e importar el SQL generado por el importador (`npx wrangler d1 execute mon-stand-production --remote --env production --file …`) — hecho el 2026-10-01 con la autorización de Diego: copia previa en `~/.mon-stand/avant-import.sql`, purga (todo a cero salvo 2 dispositivos antiguos), importación de 181 sentencias
 - [x] Verificar contra el export, en la base y en la API del panel (2026-10-01): 26 artículos (stock total 235, 8 con stock 0), 4 cierres — 18/04 35 000 CFP (11 ventas), 28/04 10 900 (5), 07/05 17 000 (7), 14/05 20 000 (9) —, 32 ventas, 16 sesiones (121 h, todas pagadas), 5 tasas, vendedora Wendy (`vend_1`, PIN `1234` a cambiar)
-- [ ] **(Diego)** En el teléfono: revocar en `/admin` los dos dispositivos antiguos, generar un código, emparejar, comprobar los 26 artículos y su stock (pestaña Stock), cambiar el PIN; la vendedora hace su inventario real (8 artículos llegan con stock 0 y quedan bloqueados en caja hasta entonces)
-- [ ] Corte (después del ensayo): `index.html` raíz → página de redirección a `workers.dev`; v1.5 archivada en `legacy/v1.5/`
-- [ ] Desactivar el despliegue de Apps Script; actualizar el README
+- [x] Teléfono de la vendedora emparejado en producción (2026-10-01, dispositivo «Wendy»), PIN `1234` cambiado, teléfono de pruebas de Diego revocado
+- [ ] **(Diego / vendedora)** Inventario real en el teléfono (Stock → Ajuster): 8 artículos llegan con stock 0 y quedan bloqueados en caja hasta entonces. Primera jornada real: comprobar en `/admin` que el cierre y su PDF llegan (ningún teléfono ha sincronizado todavía una jornada en producción)
+- [x] Corte (2026-10-01, tras emparejar el teléfono de la vendedora y cambiar su PIN): `index.html` raíz → página de redirección a `workers.dev`; v1.5 archivada en `legacy/v1.5/` (con su README de uso e `inventaire.json`); README raíz reescrito para la v2
+- [ ] **(Diego)** Desactivar el despliegue de Apps Script (Google Sheets ya no recibe nada: la v2 no lo usa)
 
 **Hecho cuando**: antes de la reanudación del mercado, la vendedora tiene la v2 instalada y todo el historial está en D1.
 
-**Estado**: importador, purga y verificación listos el 2026-09-27; el resto depende del teléfono de la vendedora y del export real (fuera del repo), así que lo hace Diego siguiendo el mode d'emploi del README. El corte se prepara en un PR aparte cuando el ensayo esté validado, para que la v1.5 siga siendo el plan B hasta entonces.
+**Estado**: hecho el 2026-10-01. Datos reales importados y verificados, teléfono de la vendedora emparejado, corte de la v1 hecho. El ensayo de una jornada completa en producción no se hizo antes del corte (se sustituyó por la auditoría de QA en local): la primera jornada real hará de ensayo, con la v1.5 archivada en `legacy/v1.5/` y el export del 2026-09-26 como red de seguridad. La aplicación Cloudflare Access para `/admin` se creó el mismo día (Fase 4). Quedan para Diego: desactivar Apps Script y borrar el secreto `ADMIN_TOKEN`, que ya no abre nada.
 
 **Total orientativo: ~3 semanas de trabajo efectivo**, con los 3 meses de parada como margen.
 
