@@ -101,7 +101,10 @@ export function LignePanier({
   );
 }
 
-/** Barra de caja siempre visible (sobre `night`): total y acción principal. */
+/**
+ * Barra de caja siempre visible (sobre `night`): total y acción principal. Se pega encima de la barra de
+ * pestañas (su altura: tap-lg + borde + zona segura); con `bottom-0` quedaba tapada por ella.
+ */
 export function BarreCaisse({
   count,
   totalCfp,
@@ -114,7 +117,7 @@ export function BarreCaisse({
   onCharge: () => void;
 }) {
   return (
-    <div className="sticky bottom-0 z-10 flex h-16 items-center gap-2 bg-night px-3 text-on-night shadow-sheet">
+    <div className="sticky bottom-[calc(var(--spacing-tap-lg)+env(safe-area-inset-bottom)+1px)] z-10 flex h-16 items-center gap-2 bg-night px-3 text-on-night shadow-sheet">
       <button
         type="button"
         onClick={onOpen}

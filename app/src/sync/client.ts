@@ -5,6 +5,7 @@ import {
   bootstrapSchema,
   syncReponseSchema,
   type AppairageReponse,
+  type Bootstrap,
   type ErreurApi,
   type SyncReponse,
 } from '../../shared/api';
@@ -12,6 +13,7 @@ import { SYNC_MAX_OPS } from '../../shared/api';
 import { appliquerOp } from '../db/appliquer';
 import { db, TABLES_DONNEES } from '../db/db';
 import { ecrireMeta, lireMeta, oublierDeviceId } from '../db/meta';
+import { t } from '../textes/fr';
 
 export type EtatSync = 'online' | 'syncing' | 'offline' | 'error' | 'revoque';
 
@@ -97,41 +99,58 @@ export async function tokenAppareil(): Promise<string | null> {
 
 export async function appairer(code: string, nom: string): Promise<void> {
   const r = await appel<AppairageReponse>('/api/devices/pair', { method: 'POST', body: JSON.stringify({ code, nom }) });
-  await db.transaction('rw', [db.meta, db.outbox], async () => {
-    await ecrireMeta('deviceToken', r.token);
+  // La instantánea se pide con el token recibido antes de guardarlo. Mientras el token no está en la base,
+  // la sincronización no arranca y no puede aplicar el diario encima del bootstrap (stock contado dos
+  // veces); y si la instantánea falla, el teléfono sigue sin emparejar en vez de quedar a medias.
+  let instantane: Bootstrap;
+  try {
+    instantane = await chargerInstantane(r.token);
+  } catch (e) {
+    if (e instanceof ErreurReseau || e instanceof ErreurApiClient) throw e;
+    throw new Error(t.appairage.bootstrapEchoue, { cause: e });
+  }
+  await db.transaction('rw', db.tables, async () => {
+    // Lo que hubiera en el outbox pertenece a una identidad anterior del teléfono: el servidor lo rechazaría.
+    await db.outbox.clear();
+    await ecrireInstantane(instantane);
     await ecrireMeta('deviceId', r.deviceId);
     await ecrireMeta('deviceNom', r.nom);
     await ecrireMeta('revoque', '');
-    // Lo que hubiera en el outbox pertenece a una identidad anterior del teléfono: el servidor lo rechazaría.
-    await db.outbox.clear();
+    await ecrireMeta('deviceToken', r.token);
   });
   oublierDeviceId();
-  await bootstrap();
   publier({ etat: 'online', erreur: null });
+}
+
+async function chargerInstantane(token: string): Promise<Bootstrap> {
+  const brut = await appel<unknown>('/api/bootstrap', { token });
+  return bootstrapSchema.parse(brut);
+}
+
+/** Reemplaza todos los datos locales por la instantánea. Se llama dentro de una transacción `rw`. */
+async function ecrireInstantane(b: Bootstrap): Promise<void> {
+  for (const table of TABLES_DONNEES) await db.table(table).clear();
+  await db.categories.bulkPut(b.categories);
+  await db.articles.bulkPut(b.articles);
+  await db.vendeurs.bulkPut(b.vendeurs);
+  await db.mouvements.bulkPut(b.mouvements);
+  await db.journees.bulkPut(b.journees);
+  await db.ventes.bulkPut(b.ventes);
+  await db.comptages.bulkPut(b.comptages);
+  await db.sessions.bulkPut(b.sessions);
+  await db.taux.bulkPut(b.taux);
+  await db.settings.bulkPut(b.settings);
+  await ecrireMeta('cursor', String(b.cursor));
+  await ecrireMeta('deviceNom', b.device.nom);
+  await ecrireMeta('bootstrapAt', b.serveurAt);
 }
 
 /** Carga la instantánea del servidor: reemplaza todos los datos locales (el outbox debe estar vacío). */
 export async function bootstrap(): Promise<void> {
   const token = await tokenAppareil();
   if (!token) return;
-  const brut = await appel<unknown>('/api/bootstrap', { token });
-  const b = bootstrapSchema.parse(brut);
-  await db.transaction('rw', db.tables, async () => {
-    for (const table of TABLES_DONNEES) await db.table(table).clear();
-    await db.categories.bulkPut(b.categories);
-    await db.articles.bulkPut(b.articles);
-    await db.vendeurs.bulkPut(b.vendeurs);
-    await db.mouvements.bulkPut(b.mouvements);
-    await db.journees.bulkPut(b.journees);
-    await db.ventes.bulkPut(b.ventes);
-    await db.comptages.bulkPut(b.comptages);
-    await db.sessions.bulkPut(b.sessions);
-    await db.taux.bulkPut(b.taux);
-    await db.settings.bulkPut(b.settings);
-    await ecrireMeta('cursor', String(b.cursor));
-    await ecrireMeta('deviceNom', b.device.nom);
-    await ecrireMeta('bootstrapAt', b.serveurAt);
-  });
+  const b = await chargerInstantane(token);
+  await db.transaction('rw', db.tables, () => ecrireInstantane(b));
 }
 
 /** Olvida el emparejamiento y borra los datos locales (solo con el outbox vacío). Vuelve a la pantalla de código. */

@@ -196,22 +196,37 @@ export async function mouvementStock(
   articleId: string,
   delta: number,
   motif: MotifStock,
-): Promise<void> {
-  if (!Number.isInteger(delta) || delta === 0) return;
+): Promise<number> {
+  if (!Number.isInteger(delta) || delta === 0) return 0;
   const env = await enveloppe(ctx);
-  await emettreOp({
-    ...env,
-    type: 'stock.mouvement',
-    mouvement: {
-      id: `mvt_${uuid()}`,
-      articleId,
-      delta,
-      motif,
-      venteId: null,
-      vendeurId: ctx.vendeurId,
-      deviceId: env.deviceId,
-      ts: env.ts,
-    },
+  // Lectura del stock y movimiento en la misma transacción: un ajuste a la baja nunca deja el stock en
+  // negativo, ni con varios toques seguidos en «−» ni con un «−10» sobre 3 unidades.
+  return db.transaction('rw', db.tables, async () => {
+    let applique = delta;
+    if (delta < 0) {
+      const mouvements = await db.mouvements.where('articleId').equals(articleId).toArray();
+      const dispo = Math.max(
+        0,
+        mouvements.reduce((s, m) => s + m.delta, 0),
+      );
+      applique = Math.max(delta, -dispo);
+    }
+    if (applique === 0) return 0;
+    await emettreOp({
+      ...env,
+      type: 'stock.mouvement',
+      mouvement: {
+        id: `mvt_${uuid()}`,
+        articleId,
+        delta: applique,
+        motif,
+        venteId: null,
+        vendeurId: ctx.vendeurId,
+        deviceId: env.deviceId,
+        ts: env.ts,
+      },
+    });
+    return applique;
   });
 }
 

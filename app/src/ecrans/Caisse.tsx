@@ -9,7 +9,7 @@ import type { ResultatPaiement } from '../../shared/domaine/encaissement';
 import { arrondir30 } from '../../shared/domaine/heures';
 import { totalLigneCfp, totauxPanier, unitesEnPromo } from '../../shared/domaine/panier';
 import { ordreCaisse } from '../../shared/domaine/stock';
-import type { Journee, LignePanier } from '../../shared/domaine/types';
+import type { Journee } from '../../shared/domaine/types';
 import { formatNumber, lireMontant } from '../../shared/montants';
 import { Banniere, Montant } from '../composants/ui/Affichage';
 import { Bouton } from '../composants/ui/Bouton';
@@ -18,6 +18,7 @@ import { Champ, Interrupteur, Puce } from '../composants/ui/Saisie';
 import { EtatVide, Feuille } from '../composants/ui/Structure';
 import { annulerVente, commencerSession, enregistrerVente, ouvrirJournee } from '../db/actions';
 import { useArticles, useCategories, useQuantites, useSessionEnCours, useSetting, useVendues30j } from '../db/hooks';
+import type { Panier } from '../etat/panier';
 import { useSession } from '../etat/session';
 import { t } from '../textes/fr';
 import { dateCourte, heure, partiesLocales } from '../utils/format';
@@ -25,7 +26,7 @@ import { Encaisser } from './Encaisser';
 
 const DUREE_ANNULATION_MS = 10_000;
 
-export function Caisse({ vendeurId, journee }: { vendeurId: string; journee: Journee | null }) {
+export function Caisse({ vendeurId, journee, panier }: { vendeurId: string; journee: Journee | null; panier: Panier }) {
   const { notifier } = useSession();
   const categories = useCategories();
   const articles = useArticles();
@@ -36,8 +37,7 @@ export function Caisse({ vendeurId, journee }: { vendeurId: string; journee: Jou
   const [categorie, setCategorie] = useState<string>('tout');
   const [recherche, setRecherche] = useState('');
   const [rechercheOuverte, setRechercheOuverte] = useState(false);
-  const [lignes, setLignes] = useState<LignePanier[]>([]);
-  const [remise, setRemise] = useState('');
+  const { lignes, setLignes, remise, setRemise } = panier;
   const [panierOuvert, setPanierOuvert] = useState(false);
   const [cobro, setCobro] = useState(false);
   const [ouvrir, setOuvrir] = useState(false);
@@ -357,6 +357,7 @@ export function OuvrirJournee({ open, onClose, vendeurId }: { open: boolean; onC
           }}
           error={erreur && !lieu.trim() ? erreur : null}
           autoComplete="off"
+          maxLength={60}
         />
         <div className="flex flex-col gap-2">
           <p className="text-caption font-semibold text-ink-muted">{t.journee.fonds}</p>

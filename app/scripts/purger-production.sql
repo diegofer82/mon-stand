@@ -2,8 +2,10 @@
 --   npx wrangler d1 execute mon-stand-production --remote --env production --file scripts/purger-production.sql
 -- Antes: guardar una copia (npx wrangler d1 export mon-stand-production --remote --env production --output <fuera del repo>.sql).
 -- Después: comprobar que todo está a cero con scripts/verifier-vide.sql, y solo entonces importar.
--- Los dispositivos emparejados y los códigos se conservan: los teléfonos siguen emparejados; su bootstrap
--- cargará los datos importados (borrar los datos locales del teléfono en Réglages → Désappairer si hiciera falta).
+-- Antes de lanzarla: désappairer todos los teléfonos (Réglages → Désappairer). Un teléfono que sigue emparejado
+-- no vuelve a hacer bootstrap: conservaría los datos de prueba y reinyectaría sus operaciones pendientes.
+-- Entre la purga y la importación no se genera ningún código ni se abre la app: sembrarían el catálogo por defecto.
+-- Las filas de devices y los códigos se conservan (los teléfonos antiguos se revocan desde /admin).
 DELETE FROM sync_journal;
 DELETE FROM sync_ops;
 DELETE FROM auth_tentatives;

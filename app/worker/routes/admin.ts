@@ -94,7 +94,7 @@ admin.delete('/devices/:id', async (c) => {
 // ---- KPIs y jornadas ----
 
 async function journeesDuMois(db: AppEnv['Variables']['db'], mois: string) {
-  const journees = (await chargerJournees(db, { limite: 1000 })).filter((j) => j.dateLocale.startsWith(mois));
+  const journees = await chargerJournees(db, { mois, limite: 1000 });
   const ventes = await chargerVentes(
     db,
     journees.map((j) => j.id),

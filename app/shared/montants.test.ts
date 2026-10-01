@@ -75,6 +75,17 @@ describe('arrondir / arrondirMontant / lireMontant', () => {
     expect(lireMontant('abc')).toBeNull();
     expect(lireMontant('')).toBeNull();
   });
+  it('en CFP y JPY, punto o coma seguidos de tres cifras son millares', () => {
+    expect(lireMontant('6.000')).toBe(6000);
+    expect(lireMontant('12,500')).toBe(12500);
+    expect(lireMontant('1.234.000')).toBe(1234000);
+    expect(lireMontant('10.000', 'JPY')).toBe(10000);
+    expect(lireMontant('6,00')).toBe(6);
+    expect(lireMontant('6.0000')).toBe(6);
+    expect(lireMontant('1234.000')).toBe(1234);
+    // Con decimales (AUD) el punto sigue siendo decimal.
+    expect(lireMontant('12.500', 'AUD')).toBe(12.5);
+  });
   it('convierte a CFP entero y expresa la tarjeta en CFP', () => {
     expect(versCfp(25, 73.77)).toBe(1844);
     expect(formatMontant(3000, 'TPE')).toBe('3\u202f000\u00a0CFP');

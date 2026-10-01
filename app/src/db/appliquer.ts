@@ -63,8 +63,15 @@ export async function appliquerOp(op: Op): Promise<void> {
           await db.taux.put({ devise: op.devise, cfpParUnite: op.cfpParUnite, source: op.source, date: op.date });
           break;
         case 'vendeur.upsert': {
+          // Sin PIN nuevo la operación trae pinHash/pinSalt a `undefined`: se conserva el hash local,
+          // si no la vendedora ya no podría entrar sin red.
           const v = await db.vendeurs.get(op.vendeur.id);
-          await db.vendeurs.put({ pinHash: v?.pinHash ?? '', pinSalt: v?.pinSalt ?? '', ...op.vendeur });
+          const { pinHash, pinSalt, ...reste } = op.vendeur;
+          await db.vendeurs.put({
+            ...reste,
+            pinHash: pinHash ?? v?.pinHash ?? '',
+            pinSalt: pinSalt ?? v?.pinSalt ?? '',
+          });
           break;
         }
         case 'settings.definir':
