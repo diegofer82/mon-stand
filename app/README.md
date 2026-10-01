@@ -15,7 +15,7 @@ React + TypeScript (Vite) servido por un Worker de Cloudflare (Hono) con D1, KV 
 
 ## Cómo funciona la interfaz (Fase 3)
 
-- **Offline-first**: los datos viven en IndexedDB (`src/db/db.ts`). Cada acción de la vendedora (`src/db/actions.ts`) construye una **operación** con UUID (`shared/ops.ts`, validada con zod), la aplica en local (`src/db/appliquer.ts`) y la deja en el **outbox**. El stock es la suma de movimientos; una venta anulada deja movimientos compensatorios.
+- **Offline-first**: los datos viven en IndexedDB (`src/db/db.ts`). Cada acción de la vendedora (`src/db/actions.ts`) construye una **operación** con UUID (`shared/ops.ts`, validada con zod), la aplica en local (`src/db/appliquer.ts`) y la deja en el **outbox**. El stock es la suma de movimientos; una venta anulada deja movimientos compensatorios. Una venta se anula desde el aviso que sigue al cobro (10 s) o desde Clôture → «Ventes du jour», solo mientras su jornada está abierta.
 - **Lecturas reactivas** con `dexie-react-hooks` (`src/db/hooks.ts`): las pantallas se repintan solas.
 - **PWA**: `vite-plugin-pwa` precarga toda la app; la nueva versión se activa en la siguiente apertura, nunca en mitad de una venta.
 

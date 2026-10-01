@@ -35,14 +35,18 @@ Límite de la simulación: el ordenador está en la zona horaria de Nouméa, as�
 
 Ya corregido en el PR #14 (encontrado al ensayar la migración): `purger-production.sql` (clave foránea del teléfono ligado a la vendedora) y `verifier-vide.sql` (límite de D1 en `UNION ALL`).
 
-## Pendiente — a decidir con Diego
+## Decidido el 2026-10-01 (respuestas de Diego)
+
+- **P1 — anular una venta pasados los 10 s**: hecho. En Clôture → «Ventes du jour», tocar una venta abre la confirmación (botón mantenido) mientras la jornada está abierta. Tras el cierre no hay acción en el historial, y `annulerVente` rechaza por sí misma una venta de una jornada cerrada (también desde el toast).
+- **P2 — artículos agotados bloqueados en caja**: se mantiene. La vendedora hará su inventario real en el teléfono (Stock → Ajuster) antes del primer mercado; de los 26 artículos importados, 8 llegan con stock 0.
+- **P10 — monnaie**: se mantiene. La vendedora devuelve siempre en la divisa recibida, que es lo que registra la app.
+
+## Pendiente
 
 ### Importante
 
 | #   | Problema                                                                                                                                                                                                | Propuesta                                                                                    |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| P1  | Una venta solo puede **anularse durante 10 s** (toast). Después no hay ningún medio, ni en Clôture ni en `/admin`                                                                                       | Botón «Annuler» en «Ventes du jour» mientras la jornada está abierta                         |
-| P2  | Un artículo **agotado en la app no se puede vender** (ficha desactivada). En el export real, **8 de 26 artículos tienen stock 0**: quedarán bloqueados tras la importación                              | Decidir: permitir la venta con aviso, o revisar el stock de esos 8 antes del primer mercado  |
 | P3  | Una jornada abierta un día anterior y no cerrada sigue siendo «la jornada»: sin aviso, las ventas del día se imputan al día viejo y no se propone arrancar las horas                                    | Aviso «journée d'hier non clôturée» con acceso directo al cierre                             |
 | P4  | Una operación rechazada 3 veces se abandona **sin mostrarse** (el estado vuelve a «en ligne»), deja «N en attente» para siempre y bloquea «Désappairer». El README decía que quedaba visible como error | Pantalla o bandeau con las operaciones rechazadas, y botón para reintentarlas o descartarlas |
 | P5  | Una sola operación inválida hace fallar **todo el lote** de sincronización (400), indefinidamente                                                                                                       | Validar con zod antes de encolar y que el servidor rechace operación por operación           |
@@ -50,7 +54,6 @@ Ya corregido en el PR #14 (encontrado al ensayar la migración): `purger-product
 | P7  | Ningún `fetch` tiene tiempo límite: con red sin caudal, el PIN se queda esperando y la sincronización se bloquea                                                                                        | Abandono a los pocos segundos y verificación local del PIN                                   |
 | P8  | Cursor del pull no atómico: con **dos teléfonos**, una operación del otro puede saltarse para siempre                                                                                                   | Cursor acotado al máximo leído (antes del multi-teléfono del backlog)                        |
 | P9  | `/admin` en producción protegido solo por el jeton                                                                                                                                                      | Crear la aplicación Cloudflare Access antes de los datos reales (README § Access)            |
-| P10 | La monnaie se registra siempre **en la divisa del pago** (decisión del plan). Si la vendedora devuelve en CFP un pago en AUD, los écarts del conteo salen falsos en las dos divisas                     | Confirmar la práctica real; si devuelve en CFP, añadir la elección en el cobro               |
 | P11 | El panel muestra el bruto recibido por divisa («50 AUD») sin la monnaie devuelta; el teléfono y el informe sí la muestran                                                                               | Mostrar el neto o «dont rendu»                                                               |
 | P12 | Sesiones de horas impagadas de más de 90 días no llegan al teléfono tras un re-emparejamiento. Hoy sin efecto: las 16 sesiones del export están pagadas                                                 | Enviar siempre las sesiones impagadas o en curso                                             |
 

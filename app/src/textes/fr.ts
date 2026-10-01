@@ -206,7 +206,7 @@ export const t = {
     rendu: 'Rendu',
     commentaire: 'Commentaire de clôture',
     cloturer: 'Clôturer la journée',
-    cloturerAide: 'La journée passe dans l’historique. Les ventes ne pourront plus être annulées.',
+    cloturerAide: 'La journée passe dans l’historique. Ses ventes ne pourront plus être annulées.',
     journeeCloturee: 'Journée clôturée',
     heuresEnCours: (heure: string) => `Vos heures tournent encore (depuis ${heure})`,
     heuresEnCoursAide:
@@ -217,6 +217,11 @@ export const t = {
     detailJournee: 'Journée',
     cloturee: (heure: string) => `clôturée à ${heure}`,
     annulee: 'annulée',
+    annulerTitre: 'Annuler cette vente ?',
+    annulerAide:
+      'Le stock est remis en place et la vente sort du chiffre d’affaires. Pensez à rendre l’argent au client : la caisse n’attend plus ce montant.',
+    annulerVente: 'Annuler la vente',
+    annulationImpossible: 'Journée clôturée : cette vente ne peut plus être annulée.',
     monnaie: 'monnaie',
     pdf: 'PDF',
   },

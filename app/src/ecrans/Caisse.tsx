@@ -111,7 +111,13 @@ export function Caisse({ vendeurId, journee, panier }: { vendeurId: string; jour
       duree: DUREE_ANNULATION_MS,
       actionLabel: t.cobro.annulerVente,
       onAction: () => {
-        void annulerVente({ vendeurId }, vente.id).then(() => notifier({ message: t.cobro.venteAnnulee, duree: 2000 }));
+        void annulerVente({ vendeurId }, vente.id).then((ok) =>
+          notifier(
+            ok
+              ? { message: t.cobro.venteAnnulee, duree: 2000 }
+              : { message: t.cloture.annulationImpossible, tone: 'danger', duree: 2500 },
+          ),
+        );
       },
     });
   };
