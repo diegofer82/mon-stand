@@ -1,5 +1,5 @@
-# GitHub Pages (v1): las versiones archivadas no se publican.
-# legacy/v1.1 usa las mismas claves deb_* de localStorage que la v1 servida en la raíz, en el mismo origen:
-# abierta en el teléfono de la vendedora, leería y reescribiría sus datos con la lógica antigua.
+# GitHub Pages: solo sirve la página de redirección hacia la v2; las versiones archivadas no se publican.
+# legacy/v1.1 y legacy/v1.5 usan las claves deb_* de localStorage en este mismo origen: abiertas en el teléfono
+# de la vendedora, leerían y reescribirían sus datos antiguos fuera de la v2.
 exclude:
   - legacy

@@ -6,9 +6,9 @@ Estas reglas se aplican a **todos los agentes** (Claude Code, Codex, Copilot, et
 
 **Mon Stand — Debajah Création**: app de stand artesanal (caja multi-divisa, stock, horas, cierre del día).
 
-- **v1** (producción): `index.html` en la raíz, servido por GitHub Pages desde `main`.
-- **v2** (en preparación): React + TypeScript en `app/`, desplegada en Cloudflare Workers (`*.workers.dev`) con D1, KV y R2.
-- **Archivo**: `legacy/` guarda la v1.0 y la v1.1 como referencia; no se modifica y GitHub Pages no la publica (`_config.yml`).
+- **v2** (producción desde el 2026-10-01): React + TypeScript en `app/`, desplegada en Cloudflare Workers (<https://mon-stand.applis.workers.dev>) con D1, KV y R2. La D1 de producción contiene los datos reales.
+- **Raíz**: `index.html` es solo la página de redirección de la dirección antigua (GitHub Pages desde `main`) hacia la v2.
+- **Archivo**: `legacy/` guarda la v1.0, la v1.1 y la v1.5 como referencia; no se modifica y GitHub Pages no la publica (`_config.yml`).
 - Plan de trabajo y decisiones: [`docs/PLAN_DE_TRABAJO.md`](docs/PLAN_DE_TRABAJO.md). Leerlo antes de empezar cualquier tarea de la v2.
 
 ## Reglas Git (obligatorias)
@@ -17,7 +17,7 @@ Estas reglas se aplican a **todos los agentes** (Claude Code, Codex, Copilot, et
 2. **Árbol de trabajo limpio al terminar**: `git status` no debe mostrar cambios ni archivos sin seguimiento. Los archivos temporales van fuera del repo, nunca en él.
 3. **`main` siempre limpio y desplegable**:
    - No se commitea directamente en `main`: se trabaja en una rama, se abre un PR y se mergea.
-   - Todo lo que llega a `main` funciona: GitHub Pages (v1) y Workers Builds (v2) despliegan desde `main`.
+   - Todo lo que llega a `main` funciona: Workers Builds (v2) y GitHub Pages (redirección) despliegan desde `main`.
    - Sin código roto, archivos de depuración, secretos ni archivos generados que no correspondan.
 4. **Después de un merge**: actualizar `main` local (`git checkout main && git pull`) y borrar la rama mergeada, local y remota.
 5. **Antes de cada push**: pasar las verificaciones del proyecto que existan (typecheck, lint, tests).

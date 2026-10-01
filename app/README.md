@@ -97,4 +97,4 @@ Un solo Worker conectado al repositorio en el panel de Cloudflare (_mon-stand �
 
 Los PR se validan con la CI (`npm run check` en GitHub Actions); el despliegue solo sale de `main`. Para volver a la versión anterior: _mon-stand → Deployments_ o `npx wrangler rollback`.
 
-La página de producción es pública, pero sin emparejar un teléfono no hay datos: solo `/api/health` responde sin token. Hasta que Diego pruebe el flujo en producción con datos de prueba y los borre, **no se importan datos reales** (Fase 6).
+La página de producción es pública, pero sin emparejar un teléfono no hay datos: solo `/api/health` responde sin token. Desde el 2026-10-01 la D1 de producción contiene los **datos reales** (importados de la v1): nada de pruebas en producción, y ninguna purga sin una copia previa y el acuerdo del propietario.
