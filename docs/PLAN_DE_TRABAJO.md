@@ -380,7 +380,7 @@ El export del 2026-09-26 es definitivo (§0): una sola importación, sin día de
 
 **Hecho cuando**: antes de la reanudación del mercado, la vendedora tiene la v2 instalada y todo el historial está en D1.
 
-**Estado**: hecho el 2026-10-01. Datos reales importados y verificados, teléfono de la vendedora emparejado, corte de la v1 hecho. El ensayo de una jornada completa en producción no se hizo antes del corte (se sustituyó por la auditoría de QA en local): la primera jornada real hará de ensayo, con la v1.5 archivada en `legacy/v1.5/` y el export del 2026-09-26 como red de seguridad. Quedan para Diego: desactivar Apps Script y crear la aplicación Cloudflare Access para `/admin`.
+**Estado**: hecho el 2026-10-01. Datos reales importados y verificados, teléfono de la vendedora emparejado, corte de la v1 hecho. El ensayo de una jornada completa en producción no se hizo antes del corte (se sustituyó por la auditoría de QA en local): la primera jornada real hará de ensayo, con la v1.5 archivada en `legacy/v1.5/` y el export del 2026-09-26 como red de seguridad. La aplicación Cloudflare Access para `/admin` se creó el mismo día (Fase 4). Quedan para Diego: desactivar Apps Script y borrar el secreto `ADMIN_TOKEN`, que ya no abre nada.
 
 **Total orientativo: ~3 semanas de trabajo efectivo**, con los 3 meses de parada como margen.
 
